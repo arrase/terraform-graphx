@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"terraform-graphx/internal/builder"
+	"terraform-graphx/internal/config"
 	"terraform-graphx/internal/formatter"
 	"terraform-graphx/internal/graph"
 	"terraform-graphx/internal/neo4j"
@@ -48,6 +49,32 @@ func runGraphx(cmd *cobra.Command, args []string) error {
 	// Use provided plan file if specified
 	if len(args) > 0 {
 		planFile = args[0]
+	}
+
+	// Load configuration from file
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Apply flag overrides to configuration
+	// Priority: flags > config file > defaults
+	if cmd.Flags().Changed("neo4j-uri") {
+		neo4jURI = cmd.Flag("neo4j-uri").Value.String()
+	} else if neo4jURI == "" || neo4jURI == "bolt://localhost:7687" {
+		neo4jURI = cfg.Neo4j.URI
+	}
+
+	if cmd.Flags().Changed("neo4j-user") {
+		neo4jUser = cmd.Flag("neo4j-user").Value.String()
+	} else if neo4jUser == "" || neo4jUser == "neo4j" {
+		neo4jUser = cfg.Neo4j.User
+	}
+
+	if cmd.Flags().Changed("neo4j-pass") {
+		neo4jPass = cmd.Flag("neo4j-pass").Value.String()
+	} else if neo4jPass == "" {
+		neo4jPass = cfg.Neo4j.Password
 	}
 
 	// Parse Terraform plan

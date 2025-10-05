@@ -2,3 +2,9 @@
 **/.terraform.lock.hcl
 **/terraform-graphx
 **/tfplan*
+
+# Configuration files with credentials
+.terraform-graphx.yaml
+
+# Neo4j data directory (project-specific)
+neo4j-data/
