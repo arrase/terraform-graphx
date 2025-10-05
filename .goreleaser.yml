@@ -44,5 +44,4 @@ changelog:
 
 release:
   draft: false
-  prerelease: auto
   name_template: "{{.Tag}}"
