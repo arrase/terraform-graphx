@@ -46,7 +46,5 @@ release:
   draft: false
   prerelease: auto
   name_template: "{{.Tag}}"
-  body: |
-    {{ .Title }}
-
-    {{ .Changelog }}
+  release_notes:
+    template: ".github/release-notes.md.tpl"
