@@ -51,10 +51,32 @@ func runGraphx(cmd *cobra.Command, args []string) error {
 		planFile = args[0]
 	}
 
-	// Load configuration from file
-	cfg, err := config.Load()
+	// Load and merge configuration
+	cfg, err := loadConfiguration(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Parse Terraform plan
+	log.Println("Parsing Terraform plan...")
+	plan, err := parser.Parse(planFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse terraform plan: %w", err)
+	}
+
+	// Build dependency graph
+	log.Println("Building dependency graph...")
+	g := builder.Build(plan)
+
+	// Handle output: update Neo4j or format and print
+	return handleOutput(g, cfg)
+}
+
+// loadConfiguration loads config from file and applies flag overrides
+func loadConfiguration(cmd *cobra.Command) (*config.Config, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
 	}
 
 	// Apply flag overrides to configuration
@@ -77,26 +99,18 @@ func runGraphx(cmd *cobra.Command, args []string) error {
 		neo4jPass = cfg.Neo4j.Password
 	}
 
-	// Parse Terraform plan
-	log.Println("Parsing Terraform plan...")
-	plan, err := parser.Parse(planFile)
-	if err != nil {
-		return fmt.Errorf("failed to parse terraform plan: %w", err)
-	}
+	return cfg, nil
+}
 
-	// Build dependency graph
-	log.Println("Building dependency graph...")
-	g := builder.Build(plan)
-
-	// Handle Neo4j update or format output
+// handleOutput decides whether to update Neo4j or format and print the graph
+func handleOutput(g *graph.Graph, cfg *config.Config) error {
 	if update {
-		return updateNeo4jDatabase(g)
+		return updateNeo4jDatabase(g, cfg)
 	}
-
 	return formatAndPrintGraph(g)
 }
 
-func updateNeo4jDatabase(g *graph.Graph) error {
+func updateNeo4jDatabase(g *graph.Graph, cfg *config.Config) error {
 	if err := validateNeo4jFlags(); err != nil {
 		return err
 	}

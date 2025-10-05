@@ -2,10 +2,20 @@ package formatter
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"terraform-graphx/internal/graph"
 )
+
+// ToJSON converts a graph object to its JSON string representation.
+func ToJSON(g *graph.Graph) (string, error) {
+	jsonData, err := json.MarshalIndent(g, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
+}
 
 // ToCypher converts a graph to Cypher MERGE statements for direct execution.
 // These statements are idempotent and can be run multiple times safely.

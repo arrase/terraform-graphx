@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	terraformCmd    = "terraform"
-	showSubCmd      = "show"
-	planSubCmd      = "plan"
-	jsonFlag        = "-json"
-	outFlag         = "-out"
-	defaultPlanFile = "tfplan.binary"
+	TerraformCommand    = "terraform"
+	ShowSubcommand      = "show"
+	PlanSubcommand      = "plan"
+	JSONFlag            = "-json"
+	OutputFlag          = "-out"
+	DefaultPlanFilename = "tfplan.binary"
 )
 
 // TerraformPlan represents the structure of the JSON output from `terraform show -json`.
@@ -84,18 +84,18 @@ type Change struct {
 }
 
 // Parse executes `terraform show -json` and unmarshals the output.
-// If planFile is empty, it generates a new plan first.
+// If planFile is empty, it generates a new plan first using `terraform plan -out=tfplan.binary`.
 func Parse(planFile string) (*TerraformPlan, error) {
 	var cmd *exec.Cmd
 
 	if planFile != "" {
-		cmd = exec.Command(terraformCmd, showSubCmd, jsonFlag, planFile)
+		cmd = exec.Command(TerraformCommand, ShowSubcommand, JSONFlag, planFile)
 	} else {
 		// Generate a plan if not provided (requires `terraform init`)
 		if err := generatePlan(); err != nil {
 			return nil, fmt.Errorf("failed to generate terraform plan: %w", err)
 		}
-		cmd = exec.Command(terraformCmd, showSubCmd, jsonFlag, defaultPlanFile)
+		cmd = exec.Command(TerraformCommand, ShowSubcommand, JSONFlag, DefaultPlanFilename)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -108,7 +108,7 @@ func Parse(planFile string) (*TerraformPlan, error) {
 
 // generatePlan creates a new Terraform plan file.
 func generatePlan() error {
-	cmd := exec.Command(terraformCmd, planSubCmd, outFlag+"="+defaultPlanFile)
+	cmd := exec.Command(TerraformCommand, PlanSubcommand, OutputFlag+"="+DefaultPlanFilename)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w\nOutput: %s", err, string(output))
 	}
