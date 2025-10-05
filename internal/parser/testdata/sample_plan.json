@@ -1,0 +1,58 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.2.0",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "null_resource.app",
+          "mode": "managed",
+          "type": "null_resource",
+          "name": "app",
+          "provider_name": "registry.terraform.io/hashicorp/null",
+          "schema_version": 0,
+          "values": {
+            "id": "known-after-apply",
+            "triggers": {
+              "cluster_id": "known-after-apply"
+            }
+          }
+        },
+        {
+          "address": "null_resource.cluster",
+          "mode": "managed",
+          "type": "null_resource",
+          "name": "cluster",
+          "provider_name": "registry.terraform.io/hashicorp/null",
+          "schema_version": 0,
+          "values": {
+            "id": "known-after-apply",
+            "triggers": {
+              "cluster_name": "my-cluster"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "null_resource.app",
+          "expressions": {
+            "triggers": {
+              "references": [
+                "null_resource.cluster.id",
+                "null_resource.cluster"
+              ]
+            }
+          }
+        },
+        {
+          "address": "null_resource.cluster"
+        }
+      ]
+    }
+  }
+}
