@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -15,7 +16,10 @@ const (
 
 // Config holds the configuration for terraform-graphx.
 type Config struct {
-	Neo4j Neo4jConfig `mapstructure:"neo4j"`
+	Neo4j    Neo4jConfig `mapstructure:"neo4j"`
+	Format   string      `mapstructure:"format"`
+	PlanFile string      `mapstructure:"planfile"`
+	Update   bool        `mapstructure:"update"`
 }
 
 // Neo4jConfig holds the Neo4j connection settings.
@@ -33,6 +37,9 @@ func DefaultConfig() *Config {
 			User:     "neo4j",
 			Password: "",
 		},
+		Format:   "json",
+		PlanFile: "",
+		Update:   false,
 	}
 }
 
@@ -68,6 +75,45 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// LoadAndMerge loads configuration from file and merges it with CLI flags.
+// Priority: flags > config file > defaults
+func LoadAndMerge(cmd *cobra.Command, args []string) (*Config, error) {
+	cfg, err := Load()
+	if err != nil {
+		return nil, err
+	}
+
+	// Override with flags
+	if cmd.Flags().Changed("format") {
+		cfg.Format, _ = cmd.Flags().GetString("format")
+	}
+
+	if cmd.Flags().Changed("update") {
+		cfg.Update, _ = cmd.Flags().GetBool("update")
+	}
+
+	if cmd.Flags().Changed("neo4j-uri") {
+		cfg.Neo4j.URI, _ = cmd.Flags().GetString("neo4j-uri")
+	}
+
+	if cmd.Flags().Changed("neo4j-user") {
+		cfg.Neo4j.User, _ = cmd.Flags().GetString("neo4j-user")
+	}
+
+	if cmd.Flags().Changed("neo4j-pass") {
+		cfg.Neo4j.Password, _ = cmd.Flags().GetString("neo4j-pass")
+	}
+
+	// Handle plan file from args or flag
+	if len(args) > 0 {
+		cfg.PlanFile = args[0]
+	} else if cmd.Flags().Changed("plan") {
+		cfg.PlanFile, _ = cmd.Flags().GetString("plan")
+	}
+
+	return cfg, nil
 }
 
 // Save writes the configuration to a .terraform-graphx.yaml file in the current directory.
