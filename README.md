@@ -1,7 +1,7 @@
 # Terraform GraphX
 
 
-`terraform-graphx` is a custom Terraform CLI extension that generates a dependency graph of your Terraform resources and can update a Neo4j database with the infrastructure state. This tool allows you to visualize and query your infrastructure as a graph without modifying Terraform's core.
+`terraform-graphx` is a custom Terraform CLI extension that generates a dependency graph of your Terraform resources and can update a Neo4j database with the infrastructure state.
 
 ## Example Graph Visualization
 
@@ -131,8 +131,6 @@ Neo4j Community Edition has a limitation: it only supports one database per inst
 
     Simply navigate to the other project directory and start a new container with that project's `neo4j-data` directory.
 
-**Note:** The `neo4j-data` directory is already included in `.gitignore` to prevent accidentally committing database files.
-
 ## Configuration
 
 `terraform-graphx` uses a configuration file to store Neo4j connection settings.
@@ -154,7 +152,11 @@ neo4j:
   password: ""
 ```
 
-**Important:** Edit this file and set your Neo4j password. This file contains sensitive credentials and should **not** be committed to version control. It's already included in `.gitignore`.
+**Important:** Edit this file and set your Neo4j password. This file contains sensitive credentials and should **not** be committed to version control.
+
+When you run `terraform graphx init config`, the command will automatically add `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository. This helps prevent accidentally committing sensitive credentials and local database files.
+
+If you initialize a Git repository *after* running `init config`, please make sure to add them to your `.gitignore` file manually.
 
 ### Verify Database Connection
 
