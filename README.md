@@ -376,10 +376,12 @@ Here's a complete workflow for using `terraform-graphx` with Neo4j:
 
 ## Development
 
-This project is written in Go and uses the Cobra library for the CLI.
+This project is written in Go and uses the Cobra library for the CLI. The code is structured to separate concerns, making it easier to maintain and test.
 
-- **Parser**: `internal/parser/parser.go` - Executes `terraform show -json` and parses the output.
-- **Builder**: `internal/builder/builder.go` - Constructs the graph from the parsed data.
-- **Formatter**: `internal/formatter/` - Contains logic for JSON and Cypher output.
-- **Neo4j Client**: `internal/neo4j/client.go` - Handles communication with the Neo4j database.
-- **Main Command**: `cmd/graphx.go` - Ties everything together.
+- **`cmd/`**: Contains the Cobra CLI command definitions. These files are responsible for parsing flags and arguments and then delegating to the `runner`.
+- **`internal/runner`**: Orchestrates the application's workflow. It uses the other `internal` packages to parse the plan, build the graph, and handle output.
+- **`internal/config`**: Manages configuration loading from files and merging with command-line flags.
+- **`internal/parser`**: Executes `terraform show -json` and parses the output.
+- **`internal/builder`**: Constructs the graph from the parsed data.
+- **`internal/formatter`**: Contains logic for JSON and Cypher output.
+- **`internal/neo4j`**: Handles all communication with the Neo4j database.
