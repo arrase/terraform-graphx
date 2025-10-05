@@ -21,9 +21,6 @@ builds:
 
 archives:
   - id: terraform-graphx
-    format_overrides:
-      - goos: windows
-        format: zip
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
