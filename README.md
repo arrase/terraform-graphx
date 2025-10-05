@@ -1,6 +1,14 @@
 # Terraform GraphX
 
+
 `terraform-graphx` is a custom Terraform CLI extension that generates a dependency graph of your Terraform resources and can update a Neo4j database with the infrastructure state. This tool allows you to visualize and query your infrastructure as a graph without modifying Terraform's core.
+
+## Example Graph Visualization
+
+Below is an example of a dependency graph visualized in Neo4j Browser:
+
+![Example Graph](screenshoot.png)
+
 
 ## Features
 
