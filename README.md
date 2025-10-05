@@ -11,19 +11,45 @@
 
 ## Installation
 
-1.  **Build from source:**
+You can install `terraform-graphx` by downloading a pre-compiled binary or by building it from source.
+
+### Pre-compiled Binaries (Recommended)
+
+The easiest way to install `terraform-graphx` is to download the latest release from the **GitHub Releases** page for this repository.
+
+1.  Download the archive for your operating system and architecture.
+2.  Extract the `terraform-graphx` binary.
+3.  Move the binary to a directory in your system's `PATH`. The binary must be named `terraform-graphx` for Terraform to detect it as a subcommand.
+
+**Example for Linux/macOS:**
+```bash
+# Replace with the correct URL from the releases page
+wget <URL_TO_TAR.GZ>
+tar -xzf terraform-graphx_*.tar.gz
+sudo mv terraform-graphx /usr/local/bin/
+```
+
+### Build from Source
+
+If you have Go (version 1.22+) installed, you can build `terraform-graphx` from source.
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/daniellvog/terraform-graphx.git
+    cd terraform-graphx
+    ```
+
+2.  Build the binary:
     ```bash
     go build -o terraform-graphx .
     ```
 
-2.  **Place the binary in your `PATH`:**
-    To use `terraform-graphx` as a Terraform subcommand, the binary must be named `terraform-graphx` and be available in your system's `PATH`.
+3.  Place the binary in your `PATH`:
     ```bash
-    mv terraform-graphx /usr/local/bin/
+    sudo mv terraform-graphx /usr/local/bin/
     ```
 
-3.  **Verify installation:**
-    The `graphx` command should now appear in the Terraform help output.
+4.  Verify the installation:
     ```bash
     terraform -help
     ```
