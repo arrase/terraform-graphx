@@ -17,6 +17,17 @@ Below is an example of a dependency graph visualized in Neo4j Browser:
 - **Neo4j Integration**: Can directly update a Neo4j database with the graph data.
 - **Modular Design**: Built with separate components for parsing, graph building, and output formatting.
 
+## AI-Enhanced Infrastructure Management
+
+The primary goal of `terraform-graphx` is to empower AI agents like **Gemini CLI** with a deep understanding of your infrastructure. The core idea is for agents to use a **Model Context Protocol (MCP)** to connect to and query the Neo4j database where `terraform-graphx` stores the infrastructure graph.
+
+By providing a constantly updated, queryable graph of Terraform resources, this tool serves as the backbone for an MCP, enabling AI agents to:
+- **Gain Context**: Quickly understand the relationships and dependencies between hundreds or thousands of resources in large-scale projects.
+- **Perform Impact Analysis**: Accurately predict the ripple effects of a change before it's applied.
+- **Automate Complex Tasks**: Autonomously generate plans, write code, and execute changes with a lower risk of error.
+
+This approach transforms your infrastructure from a static collection of configuration files into a dynamic knowledge base, paving the way for more intelligent and autonomous operations through an AI-queried MCP.
+
 ## Installation
 
 You can install `terraform-graphx` by downloading a pre-compiled binary or by building it from source.
