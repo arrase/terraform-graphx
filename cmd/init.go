@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"terraform-graphx/internal/config"
 
 	"github.com/spf13/cobra"
@@ -52,8 +55,71 @@ func runInitConfig(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  neo4j.user: %s\n", cfg.Neo4j.User)
 	fmt.Printf("  neo4j.password: (empty)\n\n")
 	fmt.Println("Please edit this file and set your Neo4j password.")
-	fmt.Println("\nNote: This file contains sensitive credentials and should not be committed to version control.")
-	fmt.Println("Add '.terraform-graphx.yaml' to your .gitignore file.")
+
+	// Attempt to update .gitignore
+	if err := updateGitignore(); err != nil {
+		// If gitignore update fails, print a warning but don't fail the command
+		fmt.Fprintf(os.Stderr, "Warning: failed to update .gitignore: %v\n", err)
+		fmt.Println("Please manually add '.terraform-graphx.yaml' and 'neo4j-data/' to your .gitignore file.")
+	}
+
+	return nil
+}
+
+// updateGitignore checks if the current directory is a git repository and if so,
+// ensures that the config file and neo4j data directory are in .gitignore.
+func updateGitignore() error {
+	// Check if we are in a git repository
+	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+	if err := cmd.Run(); err != nil {
+		// Not a git repo, or git is not installed. Do nothing.
+		fmt.Println("\nNote: Not inside a Git repository. If you initialize one later,")
+		fmt.Println("remember to add '.terraform-graphx.yaml' and 'neo4j-data/' to your .gitignore")
+		return nil
+	}
+
+	gitignorePath := ".gitignore"
+	entriesToIgnore := []string{".terraform-graphx.yaml", "neo4j-data/"}
+	var entriesAdded []string
+
+	file, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("could not open or create .gitignore: %w", err)
+	}
+	defer file.Close()
+
+	// Go to the beginning of the file to read it
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return fmt.Errorf("could not seek in .gitignore: %w", err)
+	}
+
+	// Check which entries are already present
+	scanner := bufio.NewScanner(file)
+	existingEntries := make(map[string]bool)
+	for scanner.Scan() {
+		existingEntries[strings.TrimSpace(scanner.Text())] = true
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading .gitignore: %w", err)
+	}
+
+	// Append entries that are not already present
+	for _, entry := range entriesToIgnore {
+		if !existingEntries[entry] {
+			if _, err := file.WriteString("\n" + entry); err != nil {
+				return fmt.Errorf("failed to write to .gitignore: %w", err)
+			}
+			entriesAdded = append(entriesAdded, entry)
+		}
+	}
+
+	if len(entriesAdded) > 0 {
+		fmt.Printf("\n✓ Added the following entries to .gitignore: %s\n", strings.Join(entriesAdded, ", "))
+	} else {
+		fmt.Println("\n✓ .gitignore already contains the necessary entries.")
+	}
+	fmt.Println("This prevents committing sensitive credentials and local database files.")
 
 	return nil
 }
