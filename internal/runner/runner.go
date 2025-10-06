@@ -1,33 +1,76 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"os"
-	"terraform-graphx/internal/builder"
+	"os/exec"
 	"terraform-graphx/internal/config"
 	"terraform-graphx/internal/formatter"
 	"terraform-graphx/internal/graph"
 	"terraform-graphx/internal/neo4j"
-	"terraform-graphx/internal/parser"
+	graphparser "terraform-graphx/internal/parser"
 )
 
 // Run executes the main logic of terraform-graphx.
 func Run(cfg *config.Config) error {
-	// Parse Terraform plan
-	log.Println("Parsing Terraform plan...")
-	plan, err := parser.Parse(cfg.PlanFile)
+	// Generate graph data using `terraform graph`
+	log.Println("Generating Terraform graph...")
+	graphData, err := generateGraphData(cfg.PlanFile)
 	if err != nil {
-		return fmt.Errorf("failed to parse terraform plan: %w", err)
+		return fmt.Errorf("failed to generate graph data: %w", err)
 	}
 
-	// Build dependency graph
-	log.Println("Building dependency graph...")
-	g := builder.Build(plan)
+	// Parse the graph data
+	log.Println("Parsing graph data...")
+	g, err := graphparser.ParseGraph(graphData)
+	if err != nil {
+		return fmt.Errorf("failed to parse graph data: %w", err)
+	}
 
 	// Handle output
 	return handleOutput(g, cfg)
+}
+
+// generateGraphData runs `terraform graph` and `dot` to get a JSON representation of the graph.
+func generateGraphData(planFile string) ([]byte, error) {
+	var graphArgs []string
+	if planFile != "" {
+		graphArgs = append(graphArgs, "-plan="+planFile)
+	}
+
+	terraformGraphCmd := exec.Command("terraform", append([]string{"graph"}, graphArgs...)...)
+	dotCmd := exec.Command("dot", "-Tjson")
+
+	var dotStdout, dotStderr bytes.Buffer
+	dotCmd.Stdout = &dotStdout
+	dotCmd.Stderr = &dotStderr
+
+	pipe, err := terraformGraphCmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pipe: %w", err)
+	}
+	dotCmd.Stdin = pipe
+
+	if err := terraformGraphCmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start terraform graph command: %w", err)
+	}
+
+	if err := dotCmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start dot command: %w", err)
+	}
+
+	if err := terraformGraphCmd.Wait(); err != nil {
+		return nil, fmt.Errorf("terraform graph command failed: %w", err)
+	}
+
+	if err := dotCmd.Wait(); err != nil {
+		return nil, fmt.Errorf("dot command failed: %w - %s", err, dotStderr.String())
+	}
+
+	return dotStdout.Bytes(), nil
 }
 
 // handleOutput decides whether to update Neo4j or format and print the graph.

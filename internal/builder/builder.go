@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -27,9 +29,14 @@ func Build(plan *parser.TerraformPlan) *graph.Graph {
 	// Build lookup structures for efficient edge extraction
 	nodeMap, nodeKeys := createNodeLookupMap(g.Nodes)
 
-	// Extract edges from configuration
+	// Extract edges from the prior state's depends_on fields
 	uniqueEdges := make(map[string]struct{})
-	extractEdges(&plan.Configuration.RootModule, nodeMap, nodeKeys, uniqueEdges)
+	extractEdgesFromState(&plan.PriorState.Values.RootModule, nodeMap, uniqueEdges)
+
+	// Fallback to configuration analysis if state is empty (e.g., initial plan)
+	if len(uniqueEdges) == 0 {
+		extractEdgesFromConfig(&plan.Configuration.RootModule, nodeMap, nodeKeys, uniqueEdges)
+	}
 
 	// Convert unique edges map to slice
 	g.Edges = convertEdgesToSlice(uniqueEdges)
@@ -98,34 +105,99 @@ func extractNodes(module *parser.Module) []graph.Node {
 	return nodes
 }
 
-// extractEdges recursively traverses the configuration to find dependencies.
-// It populates uniqueEdges map to prevent duplicate edges.
-// Dependencies are found by analyzing expressions in resource blocks,
-// which contain references to other resources, variables, or data sources.
-func extractEdges(module *parser.ConfigModule, nodeMap map[string]graph.Node, nodeKeys []string, uniqueEdges map[string]struct{}) {
+// extractEdgesFromState recursively traverses the state to find dependencies from `depends_on`.
+func extractEdgesFromState(module *parser.StateModule, nodeMap map[string]graph.Node, uniqueEdges map[string]struct{}) {
 	for _, r := range module.Resources {
-		// Skip if resource is not in our node map (e.g., data sources)
+		// Ensure the resource exists in our node map
 		if _, ok := nodeMap[r.Address]; !ok {
 			continue
 		}
 
-		// Process all expressions in the resource
-		for _, expr := range r.Expressions {
-			for _, ref := range expr.References {
-				depAddress := resolveResourceAddress(ref, nodeKeys)
-
-				// Add edge if valid dependency found (no self-references)
-				if depAddress != "" && r.Address != depAddress {
-					edgeKey := fmt.Sprintf("%s -> %s", r.Address, depAddress)
-					uniqueEdges[edgeKey] = struct{}{}
-				}
+		for _, dep := range r.DependsOn {
+			// The dep string is already a resolved resource address
+			if _, ok := nodeMap[dep]; ok {
+				edgeKey := fmt.Sprintf("%s -> %s", r.Address, dep)
+				uniqueEdges[edgeKey] = struct{}{}
 			}
 		}
 	}
 
 	// Recursively process child modules
+	for _, child := range module.ChildModules {
+		extractEdgesFromState(&child, nodeMap, uniqueEdges)
+	}
+}
+
+// extractEdgesFromConfig recursively traverses the configuration to find dependencies.
+func extractEdgesFromConfig(module *parser.ConfigModule, nodeMap map[string]graph.Node, nodeKeys []string, uniqueEdges map[string]struct{}) {
+	for _, r := range module.Resources {
+		var resource parser.ConfigResource
+		if err := json.Unmarshal(r, &resource); err != nil {
+			continue
+		}
+
+		// Skip if resource is not in our node map (e.g., data sources)
+		if _, ok := nodeMap[resource.Address]; !ok {
+			continue
+		}
+
+		// Process all expressions in the resource
+		findReferencesInRawMessage(resource.Expressions, func(ref string) {
+			depAddress := resolveResourceAddress(ref, nodeKeys)
+			// Add edge if valid dependency found (no self-references)
+			if depAddress != "" && resource.Address != depAddress {
+				edgeKey := fmt.Sprintf("%s -> %s", resource.Address, depAddress)
+				uniqueEdges[edgeKey] = struct{}{}
+			}
+		})
+	}
+
+	// Recursively process child modules
 	for _, child := range module.ModuleCalls {
-		extractEdges(&child.Module, nodeMap, nodeKeys, uniqueEdges)
+		extractEdgesFromConfig(&child.Module, nodeMap, nodeKeys, uniqueEdges)
+	}
+}
+
+// findReferencesInRawMessage recursively decodes a json.RawMessage to find all "references" fields.
+func findReferencesInRawMessage(raw json.RawMessage, callback func(string)) {
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return
+	}
+
+	// Case 1: It's an object
+	if bytes.HasPrefix(raw, []byte("{")) {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &obj); err != nil {
+			return
+		}
+
+		// Check if this object is an Expression
+		if refs, ok := obj["references"]; ok {
+			var references []string
+			if err := json.Unmarshal(refs, &references); err == nil {
+				for _, ref := range references {
+					callback(ref)
+				}
+			}
+		} else {
+			// Otherwise, recurse into its values
+			for _, value := range obj {
+				findReferencesInRawMessage(value, callback)
+			}
+		}
+		return
+	}
+
+	// Case 2: It's an array
+	if bytes.HasPrefix(raw, []byte("[")) {
+		var arr []json.RawMessage
+		if err := json.Unmarshal(raw, &arr); err != nil {
+			return
+		}
+		for _, item := range arr {
+			findReferencesInRawMessage(item, callback)
+		}
+		return
 	}
 }
 

@@ -17,9 +17,32 @@ const (
 
 // TerraformPlan represents the structure of the JSON output from `terraform show -json`.
 type TerraformPlan struct {
+	PriorState      State            `json:"prior_state"`
 	PlannedValues   PlannedValues    `json:"planned_values"`
 	Configuration   Configuration    `json:"configuration"`
 	ResourceChanges []ResourceChange `json:"resource_changes"`
+}
+
+// State represents the prior state of the infrastructure.
+type State struct {
+	Values StateValues `json:"values"`
+}
+
+// StateValues represents the values within the state.
+type StateValues struct {
+	RootModule StateModule `json:"root_module"`
+}
+
+// StateModule represents a module within the state.
+type StateModule struct {
+	Resources    []StateResource `json:"resources"`
+	ChildModules []StateModule   `json:"child_modules"`
+}
+
+// StateResource represents a single resource in the state.
+type StateResource struct {
+	Address   string   `json:"address"`
+	DependsOn []string `json:"depends_on"`
 }
 
 // PlannedValues represents the planned state of resources.
@@ -54,15 +77,17 @@ type ConfigModule struct {
 	ModuleCalls map[string]ModuleCall `json:"module_calls"`
 }
 
+
+
 // ConfigResource represents a resource block in the configuration.
 type ConfigResource struct {
 	Address     string                `json:"address"`
-	Expressions map[string]Expression `json:"expressions"`
+	Expressions json.RawMessage `json:"expressions"`
 }
 
 // ModuleCall represents a module block in the configuration.
 type ModuleCall struct {
-	Expressions map[string]Expression `json:"expressions"`
+	Expressions json.RawMessage `json:"expressions"`
 	Module      ConfigModule          `json:"module"`
 }
 
