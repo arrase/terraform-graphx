@@ -10,9 +10,7 @@ var rootCmd = &cobra.Command{
 	Use:   "terraform-graphx",
 	Short: "Generate dependency graphs from Terraform infrastructure",
 	Long: `terraform-graphx is a CLI tool that generates dependency graphs of your 
-Terraform infrastructure and can export them to JSON, Cypher, or Neo4j.
-
-It integrates seamlessly as a Terraform subcommand when placed in your PATH.`,
+Terraform infrastructure and can export them to JSON, Cypher, or Neo4j.`,
 }
 
 // Execute runs the root command.
