@@ -80,25 +80,85 @@ If you have Go (version 1.22+) installed, you can build `terraform-graphx` from 
 
 ## Neo4j Setup
 
-`terraform-graphx` is designed to work with **Neo4j Community Edition**, which allows only one database per instance. To work with multiple Terraform projects simultaneously, we recommend using Docker with project-specific data directories.
+`terraform-graphx` includes built-in Docker support to easily manage Neo4j databases for your Terraform projects. Each project can have its own isolated Neo4j instance.
 
-### Why Docker with Project-Specific Volumes?
+### Quick Start with Built-in Docker Support
 
-Neo4j Community Edition has a limitation: it only supports one database per instance. To maintain separate graphs for different Terraform projects, we use Docker containers with project-specific data volumes. This allows you to:
+The simplest way to get started is using the built-in Docker commands:
 
-- Isolate graphs for each Terraform project
-- Start and stop databases independently
-- Avoid conflicts between different infrastructure states
+1. **Initialize configuration:**
 
-### Setting Up Neo4j with Docker
+    ```bash
+    terraform-graphx init
+    ```
+
+    This command will:
+    - Create a `.terraform-graphx.yaml` configuration file with a randomly generated password
+    - Set up the default Neo4j Docker image (neo4j:community)
+    - Create the `neo4j-data` directory for data persistence
+    - Add both files to `.gitignore` if you're in a Git repository
+
+2. **Start Neo4j:**
+
+    ```bash
+    terraform-graphx start
+    ```
+
+    This command will:
+    - Pull the Neo4j Docker image if not already present
+    - Start a Neo4j container in the background
+    - Mount the `neo4j-data` directory as a volume
+    - Use the credentials from your configuration file
+
+3. **Stop Neo4j:**
+
+    ```bash
+    terraform-graphx stop
+    ```
+
+    This command will:
+    - Stop the running Neo4j container
+    - Remove the container
+    - Preserve all data in the `neo4j-data` directory
+
+4. **Access the Neo4j Browser (optional):**
+
+    Open <http://localhost:7474> in your browser to access the Neo4j web interface.
+
+    - Username: `neo4j`
+    - Password: The password shown when you ran `terraform-graphx init`
+
+### Important: Working with Existing Data
+
+If you have existing Neo4j data in the `neo4j-data` directory, be aware that:
+
+- **Neo4j ignores the password in the config file** when starting with existing data
+- The database will use the password stored in the existing data
+- The `start` command will warn you when this happens
+
+**If you get authentication errors:**
+
+1. **Option 1 - Start fresh** (development/testing):
+   ```bash
+   terraform-graphx stop
+   sudo rm -rf neo4j-data
+   rm -f .terraform-graphx.yaml
+   terraform-graphx init
+   terraform-graphx start
+   ```
+
+2. **Option 2 - Use existing password** (production):
+   Edit `.terraform-graphx.yaml` and set the password to match your existing database.
+
+### Alternative: Manual Docker Setup
+
+If you prefer to manage Docker manually, you can still do so:
 
 1. **Create a data directory in your Terraform project:**
 
     ```bash
     mkdir neo4j-data
     ```
-
-    This directory will persist your Neo4j database and will be mounted into the Docker container.
 
 2. **Start a Neo4j container for your project:**
 
@@ -113,50 +173,57 @@ Neo4j Community Edition has a limitation: it only supports one database per inst
 
     Replace `your-password` with a secure password.
 
-3. **Access the Neo4j Browser (optional):**
+3. **To work on a different project:**
 
-    Open <http://localhost:7474> in your browser to access the Neo4j web interface.
+    Simply navigate to the other project directory and use `terraform-graphx start` or start a new container with that project's `neo4j-data` directory.
 
-    - Username: `neo4j`
-    - Password: The password you set above
+### Why Project-Specific Databases?
 
-4. **Stop the container when you're done:**
+Neo4j Community Edition has a limitation: it only supports one database per instance. To maintain separate graphs for different Terraform projects, `terraform-graphx` uses project-specific data volumes. This allows you to:
 
-    ```bash
-    docker stop terraform-graphx-neo4j
-    docker rm terraform-graphx-neo4j
-    ```
-
-5. **To work on a different project:**
-
-    Simply navigate to the other project directory and start a new container with that project's `neo4j-data` directory.
+- Isolate graphs for each Terraform project
+- Start and stop databases independently
+- Avoid conflicts between different infrastructure states
 
 ## Configuration
 
-`terraform-graphx` uses a configuration file to store Neo4j connection settings.
+`terraform-graphx` uses a configuration file to store Neo4j connection settings and Docker configuration.
 
 ### Initialize Configuration
 
 Create a configuration file in your project directory:
 
 ```bash
-terraform-graphx init config
+terraform-graphx init
 ```
 
-This creates a `.terraform-graphx.yaml` file with default values:
+This creates a `.terraform-graphx.yaml` file with default values and a randomly generated password:
 
 ```yaml
 neo4j:
   uri: bolt://localhost:7687
   user: neo4j
-  password: ""
+  password: <randomly-generated-password>
+  docker_image: neo4j:community
 ```
 
-**Important:** Edit this file and set your Neo4j password. This file contains sensitive credentials and should **not** be committed to version control.
+**Important:** This file contains sensitive credentials and should **not** be committed to version control.
 
-When you run `terraform-graphx init config`, the command will automatically add `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository. This helps prevent accidentally committing sensitive credentials and local database files.
+When you run `terraform-graphx init`, the command will automatically:
+- Generate a secure random password for Neo4j
+- Create the `.terraform-graphx.yaml` configuration file
+- Create the `neo4j-data/` directory for data persistence
+- Add both `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository
 
-If you initialize a Git repository *after* running `init config`, please make sure to add them to your `.gitignore` file manually.
+This helps prevent accidentally committing sensitive credentials and local database files.
+
+If you initialize a Git repository *after* running `init`, please make sure to add them to your `.gitignore` file manually.
+
+### Customizing the Configuration
+
+You can edit the `.terraform-graphx.yaml` file to:
+- Change the Neo4j Docker image (e.g., `neo4j:5.15.0` for a specific version)
+- Modify connection settings if needed
 
 ### Verify Database Connection
 

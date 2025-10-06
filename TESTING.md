@@ -28,12 +28,33 @@ make test-e2e
 
 ### Prerequisites
 
-1. **Neo4j running** - You need a Neo4j instance running and accessible
+1. **Docker installed** - Required for running Neo4j
 2. **Configuration file** - A `.terraform-graphx.yaml` file with valid credentials
 
 ### Setting up Neo4j for Testing
 
-#### Option 1: Docker (Recommended)
+#### Option 1: Using Built-in Commands (Recommended)
+
+The easiest way is to use the built-in Docker commands:
+
+```bash
+# Initialize configuration (generates random password and creates neo4j-data directory)
+./terraform-graphx init
+
+# Start Neo4j in Docker
+./terraform-graphx start
+
+# The database should be ready in a few seconds
+```
+
+When you're done testing:
+
+```bash
+# Stop and remove the Neo4j container
+./terraform-graphx stop
+```
+
+#### Option 2: Manual Docker Setup
 
 ```bash
 # Start Neo4j in Docker
@@ -48,26 +69,28 @@ docker run -d \
 sleep 10
 ```
 
-#### Option 2: Existing Neo4j Instance
-
-Use any Neo4j instance you have available (Community or Enterprise Edition).
-
-### Configure Credentials
-
-1. **Initialize the config file:**
+Then create the configuration manually:
 
 ```bash
-./terraform-graphx init config
+# Initialize the config file
+./terraform-graphx init
+
+# Edit .terraform-graphx.yaml and set the password to match your Docker setup
 ```
 
-2. **Edit `.terraform-graphx.yaml`:**
+Or create it manually:
 
 ```yaml
 neo4j:
   uri: bolt://localhost:7687
   user: neo4j
-  password: testpassword  # Use your actual password
+  password: testpassword  # Use the password from your Docker setup
+  docker_image: neo4j:community
 ```
+
+#### Option 3: Existing Neo4j Instance
+
+Use any Neo4j instance you have available (Community or Enterprise Edition).
 
 ## Running E2E Tests
 
@@ -160,11 +183,32 @@ make test-all
 
 ## Continuous Integration
 
-For CI environments, you'll need to:
+For CI environments, you can use the built-in Docker commands or manual setup.
 
-1. Start Neo4j before running tests
-2. Create a `.terraform-graphx.yaml` with test credentials
-3. Run the E2E tests
+### Option 1: Using Built-in Commands
+
+Example GitHub Actions workflow:
+
+```yaml
+- name: Install terraform-graphx
+  run: |
+    # Build or download terraform-graphx
+    go build -o terraform-graphx .
+
+- name: Setup Neo4j
+  run: |
+    ./terraform-graphx init
+    ./terraform-graphx start
+
+- name: Run tests
+  run: make test-all
+
+- name: Cleanup
+  if: always()
+  run: ./terraform-graphx stop
+```
+
+### Option 2: Manual Docker Setup
 
 Example GitHub Actions workflow:
 
@@ -183,7 +227,8 @@ Example GitHub Actions workflow:
     echo 'neo4j:
       uri: bolt://localhost:7687
       user: neo4j
-      password: testpassword' > .terraform-graphx.yaml
+      password: testpassword
+      docker_image: neo4j:community' > .terraform-graphx.yaml
 
 - name: Run tests
   run: make test-all
@@ -197,9 +242,27 @@ Example GitHub Actions workflow:
 - Verify the URI in `.terraform-graphx.yaml` is correct
 - Test manually: `./terraform-graphx check database`
 
+### "Authentication failure" or "Unauthorized"
+
+This usually happens when there's existing Neo4j data with a different password:
+
+1. **Quick fix - Start fresh:**
+   ```bash
+   ./terraform-graphx stop
+   sudo rm -rf neo4j-data
+   rm -f .terraform-graphx.yaml
+   ./terraform-graphx init
+   ./terraform-graphx start
+   ```
+
+2. **Alternative - Match existing password:**
+   Edit `.terraform-graphx.yaml` and set the password to match your existing database.
+
+**Why this happens:** Neo4j ignores the `NEO4J_AUTH` environment variable when starting with existing data. The `start` command will warn you when this situation is detected.
+
 ### "Config file not found"
 
-Run `./terraform-graphx init config` and edit the generated file.
+Run `./terraform-graphx init` to create the configuration file.
 
 ### Tests timeout
 

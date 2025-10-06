@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,26 +16,24 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize terraform-graphx configuration",
-	Long:  `Initialize terraform-graphx configuration and settings.`,
-}
+	Long: `Initialize terraform-graphx configuration and settings.
 
-var initConfigCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Create a configuration file with default values",
-	Long: `Create a .terraform-graphx.yaml configuration file in the current directory
-with default values. You can then edit this file to set your Neo4j credentials.
+Creates a .terraform-graphx.yaml configuration file in the current directory
+with default values and a randomly generated password. Also creates the neo4j-data
+directory for Docker volume mounting.
 
 The configuration file will be created with the following default values:
   - neo4j.uri: bolt://localhost:7687
   - neo4j.user: neo4j
-  - neo4j.password: (empty, you must set this)
+  - neo4j.password: (randomly generated)
+  - neo4j.docker_image: neo4j:community
 
 Example:
-  terraform graphx init config`,
-	RunE: runInitConfig,
+  terraform-graphx init`,
+	RunE: runInit,
 }
 
-func runInitConfig(cmd *cobra.Command, args []string) error {
+func runInit(cmd *cobra.Command, args []string) error {
 	configPath := ".terraform-graphx.yaml"
 
 	// Check if config file already exists
@@ -44,17 +44,31 @@ func runInitConfig(cmd *cobra.Command, args []string) error {
 	// Create default config
 	cfg := config.DefaultConfig()
 
+	// Generate random password
+	password, err := generateRandomPassword(16)
+	if err != nil {
+		return fmt.Errorf("failed to generate random password: %w", err)
+	}
+	cfg.Neo4j.Password = password
+
 	// Save to file
 	if err := config.Save(cfg, configPath); err != nil {
 		return fmt.Errorf("failed to create config file: %w", err)
+	}
+
+	// Create neo4j-data directory
+	dataDir := "neo4j-data"
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return fmt.Errorf("failed to create neo4j-data directory: %w", err)
 	}
 
 	fmt.Printf("✓ Created configuration file: %s\n\n", configPath)
 	fmt.Println("Default configuration:")
 	fmt.Printf("  neo4j.uri: %s\n", cfg.Neo4j.URI)
 	fmt.Printf("  neo4j.user: %s\n", cfg.Neo4j.User)
-	fmt.Printf("  neo4j.password: (empty)\n\n")
-	fmt.Println("Please edit this file and set your Neo4j password.")
+	fmt.Printf("  neo4j.password: %s\n", cfg.Neo4j.Password)
+	fmt.Printf("  neo4j.docker_image: %s\n\n", cfg.Neo4j.DockerImage)
+	fmt.Printf("✓ Created data directory: %s\n\n", dataDir)
 
 	// Attempt to update .gitignore
 	if err := updateGitignore(); err != nil {
@@ -64,6 +78,15 @@ func runInitConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// generateRandomPassword generates a random password of the specified length
+func generateRandomPassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
 }
 
 // updateGitignore checks if the current directory is a git repository and if so,
@@ -126,5 +149,4 @@ func updateGitignore() error {
 
 func init() {
 	rootCmd.AddCommand(initCmd)
-	initCmd.AddCommand(initConfigCmd)
 }

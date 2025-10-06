@@ -24,18 +24,20 @@ type Config struct {
 
 // Neo4jConfig holds the Neo4j connection settings.
 type Neo4jConfig struct {
-	URI      string `mapstructure:"uri"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
+	URI         string `mapstructure:"uri"`
+	User        string `mapstructure:"user"`
+	Password    string `mapstructure:"password"`
+	DockerImage string `mapstructure:"docker_image"`
 }
 
 // DefaultConfig returns a Config with default values.
 func DefaultConfig() *Config {
 	return &Config{
 		Neo4j: Neo4jConfig{
-			URI:      "bolt://localhost:7687",
-			User:     "neo4j",
-			Password: "",
+			URI:         "bolt://localhost:7687",
+			User:        "neo4j",
+			Password:    "",
+			DockerImage: "neo4j:community",
 		},
 		Format:   "json",
 		PlanFile: "",
@@ -126,6 +128,7 @@ func Save(cfg *Config, path string) error {
 	v.Set("neo4j.uri", cfg.Neo4j.URI)
 	v.Set("neo4j.user", cfg.Neo4j.User)
 	v.Set("neo4j.password", cfg.Neo4j.Password)
+	v.Set("neo4j.docker_image", cfg.Neo4j.DockerImage)
 
 	// Ensure the directory exists
 	dir := filepath.Dir(path)
