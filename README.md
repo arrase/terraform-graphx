@@ -1,276 +1,89 @@
 # Terraform GraphX
 
-
-`terraform-graphx` generates a dependency graph of your Terraform resources and can update a Neo4j database with the infrastructure state.
-
-## Example Graph Visualization
-
-Below is an example of a dependency graph visualized in Neo4j Browser:
+A CLI tool that generates dependency graphs from your Terraform infrastructure and stores them in Neo4j for powerful querying and visualization.
 
 ![Example Graph](screenshoot.png)
 
+## Quick Start
+
+Get up and running in 3 simple steps:
+
+```bash
+# 1. Initialize configuration and Neo4j database
+terraform-graphx init
+terraform-graphx start
+
+# 2. Generate and visualize your infrastructure graph
+terraform-graphx --update
+
+# 3. Open Neo4j Browser and explore
+# Visit http://localhost:7474
+# Username: neo4j
+# Password: (shown during init)
+```
 
 ## Features
 
-- **Standalone Binary**: A single Go binary that can be used as a command-line tool (`terraform-graphx`).
-- **Machine-Readable Output**: Generates a dependency graph in JSON or Cypher format.
-- **Neo4j Integration**: Can directly update a Neo4j database with the graph data.
-- **Modular Design**: Built with separate components for parsing, graph building, and output formatting.
-
-## AI-Enhanced Infrastructure Management
-
-The primary goal of `terraform-graphx` is to empower AI agents like **Gemini CLI** with a deep understanding of your infrastructure. The core idea is for agents to use a **Model Context Protocol (MCP)** to connect to and query the Neo4j database where `terraform-graphx` stores the infrastructure graph.
-
-By providing a constantly updated, queryable graph of Terraform resources, this tool serves as the backbone for an MCP, enabling AI agents to:
-
-- **Gain Context**: Quickly understand the relationships and dependencies between hundreds or thousands of resources in large-scale projects.
-- **Perform Impact Analysis**: Accurately predict the ripple effects of a change before it's applied.
-- **Automate Complex Tasks**: Autonomously generate plans, write code, and execute changes with a lower risk of error.
-
-This approach transforms your infrastructure from a static collection of configuration files into a dynamic knowledge base, paving the way for more intelligent and autonomous operations through an AI-queried MCP.
+- **🚀 Zero Configuration Start**: Built-in Docker support manages Neo4j automatically
+- **📊 Multiple Output Formats**: Export as JSON, Cypher statements, or push directly to Neo4j
+- **🔄 Idempotent Updates**: Run multiple times safely without duplicating data
+- **🎯 Plan Support**: Analyze graphs from saved Terraform plans
+- **🤖 AI-Ready**: Perfect foundation for AI agents via Model Context Protocol (MCP)
+- **🔒 Secure by Default**: Auto-generated passwords, automatic `.gitignore` entries
 
 ## Installation
 
-You can install `terraform-graphx` by downloading a pre-compiled binary or by building it from source.
+### Option 1: Download Pre-built Binary (Recommended)
 
-### Pre-compiled Binaries (Recommended)
+Download the latest release for your platform from the [GitHub Releases](https://github.com/daniellvog/terraform-graphx/releases) page.
 
-The easiest way to install `terraform-graphx` is to download the latest release from the **GitHub Releases** page for this repository.
-
-1. Download the archive for your operating system and architecture.
-2. Extract the `terraform-graphx` binary.
-3. Move the binary to a directory in your system's `PATH`.
-
-**Example for Linux/macOS:**
+**Linux/macOS:**
 
 ```bash
-# Replace with the correct URL from the releases page
+# Download and extract (replace URL with latest release)
 wget <URL_TO_TAR.GZ>
 tar -xzf terraform-graphx_*.tar.gz
+
+# Install to system path
+sudo mv terraform-graphx /usr/local/bin/
+
+# Verify installation
+terraform-graphx --help
+```
+
+**Windows:**
+
+1. Download the `.zip` file for Windows
+2. Extract `terraform-graphx.exe`
+3. Add the directory to your system's PATH
+
+### Option 2: Build from Source
+
+Requirements: Go 1.22 or later
+
+```bash
+git clone https://github.com/daniellvog/terraform-graphx.git
+cd terraform-graphx
+go build -o terraform-graphx .
 sudo mv terraform-graphx /usr/local/bin/
 ```
 
-### Build from Source
-
-If you have Go (version 1.22+) installed, you can build `terraform-graphx` from source.
-
-1. Clone the repository:
-
-    ```bash
-    git clone https://github.com/daniellvog/terraform-graphx.git
-    cd terraform-graphx
-    ```
-
-2. Build the binary:
-
-    ```bash
-    go build -o terraform-graphx .
-    ```
-
-3. Place the binary in your `PATH`:
-
-    ```bash
-    sudo mv terraform-graphx /usr/local/bin/
-    ```
-
-4. Verify the installation:
-
-    ```bash
-    terraform -help
-    ```
-
-## Neo4j Setup
-
-`terraform-graphx` includes built-in Docker support to easily manage Neo4j databases for your Terraform projects. Each project can have its own isolated Neo4j instance.
-
-### Quick Start with Built-in Docker Support
-
-The simplest way to get started is using the built-in Docker commands:
-
-1. **Initialize configuration:**
-
-    ```bash
-    terraform-graphx init
-    ```
-
-    This command will:
-    - Create a `.terraform-graphx.yaml` configuration file with a randomly generated password
-    - Set up the default Neo4j Docker image (neo4j:community)
-    - Create the `neo4j-data` directory for data persistence
-    - Add both files to `.gitignore` if you're in a Git repository
-
-2. **Start Neo4j:**
-
-    ```bash
-    terraform-graphx start
-    ```
-
-    This command will:
-    - Pull the Neo4j Docker image if not already present
-    - Start a Neo4j container in the background
-    - Mount the `neo4j-data` directory as a volume
-    - Use the credentials from your configuration file
-
-3. **Stop Neo4j:**
-
-    ```bash
-    terraform-graphx stop
-    ```
-
-    This command will:
-    - Stop the running Neo4j container
-    - Remove the container
-    - Preserve all data in the `neo4j-data` directory
-
-4. **Access the Neo4j Browser (optional):**
-
-    Open <http://localhost:7474> in your browser to access the Neo4j web interface.
-
-    - Username: `neo4j`
-    - Password: The password shown when you ran `terraform-graphx init`
-
-### Important: Working with Existing Data
-
-If you have existing Neo4j data in the `neo4j-data` directory, be aware that:
-
-- **Neo4j ignores the password in the config file** when starting with existing data
-- The database will use the password stored in the existing data
-- The `start` command will warn you when this happens
-
-**If you get authentication errors:**
-
-1. **Option 1 - Start fresh** (development/testing):
-
-  ```bash
-  terraform-graphx stop
-  sudo rm -rf neo4j-data
-  rm -f .terraform-graphx.yaml
-  terraform-graphx init
-  terraform-graphx start
-  ```
-
-1. **Option 2 - Use existing password** (production):
-
-  Edit `.terraform-graphx.yaml` and set the password to match your existing database.
-
-### Alternative: Manual Docker Setup
-
-If you prefer to manage Docker manually, you can still do so:
-
-1. **Create a data directory in your Terraform project**
-
-  ```bash
-  mkdir neo4j-data
-  ```
-
-1. **Start a Neo4j container for your project**
-
-  ```bash
-  docker run -d \
-    --name terraform-graphx-neo4j \
-    -p 7474:7474 -p 7687:7687 \
-    -v $(pwd)/neo4j-data:/data \
-    -e NEO4J_AUTH=neo4j/your-password \
-    neo4j:community
-  ```
-
-  Replace `your-password` with a secure password.
-
-1. **To work on a different project**
-
-  Simply navigate to the other project directory and use `terraform-graphx start` or start a new container with that project's `neo4j-data` directory.
-
-### Why Project-Specific Databases?
-
-Neo4j Community Edition has a limitation: it only supports one database per instance. To maintain separate graphs for different Terraform projects, `terraform-graphx` uses project-specific data volumes. This allows you to:
-
-- Isolate graphs for each Terraform project
-- Start and stop databases independently
-- Avoid conflicts between different infrastructure states
-
-## Configuration
-
-`terraform-graphx` uses a configuration file to store Neo4j connection settings and Docker configuration.
-
-### Initialize Configuration
-
-Create a configuration file in your project directory:
-
-```bash
-terraform-graphx init
-```
-
-This creates a `.terraform-graphx.yaml` file with default values and a randomly generated password:
-
-```yaml
-neo4j:
-  uri: bolt://localhost:7687
-  user: neo4j
-  password: <randomly-generated-password>
-  docker_image: neo4j:community
-```
-
-**Important:** This file contains sensitive credentials and should **not** be committed to version control.
-
-When you run `terraform-graphx init`, the command will automatically:
-
-- Generate a secure random password for Neo4j
-- Create the `.terraform-graphx.yaml` configuration file
-- Create the `neo4j-data/` directory for data persistence
-- Add both `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository
-
-This helps prevent accidentally committing sensitive credentials and local database files.
-
-If you initialize a Git repository *after* running `init`, please make sure to add them to your `.gitignore` file manually.
-
-### Customizing the Configuration
-
-You can edit the `.terraform-graphx.yaml` file to:
-
-- Change the Neo4j Docker image (e.g., `neo4j:5.15.0` for a specific version)
-- Modify connection settings if needed
-
-### Verify Database Connection
-
-Before using terraform-graphx, verify that the connection to Neo4j works:
-
-```bash
-terraform-graphx check database
-```
-
-This command will:
-
-- Load credentials from `.terraform-graphx.yaml`
-- Attempt to connect to Neo4j
-- Report the connection status
-
-### Configuration Priority
-
-When running commands, `terraform-graphx` loads configuration in this order of priority:
-
-1. **Command-line flags** (highest priority)
-2. **Configuration file** (`.terraform-graphx.yaml`)
-3. **Default values** (lowest priority)
-
-This allows you to override configuration file settings with flags when needed.
-
-## Usage
-
-Navigate to your Terraform project directory and run the `terraform-graphx` command.
+## Basic Usage
 
 ### Prerequisites
 
-- **Terraform**: You must have `terraform` installed and have initialized your project with `terraform init`.
+- Terraform installed and project initialized (`terraform init`)
+- Docker installed (for built-in Neo4j support)
 
-### Generating a JSON Graph
+### Generate JSON Output
 
-By default, `terraform-graphx` outputs the dependency graph in JSON format.
+Export your infrastructure graph to JSON:
 
 ```bash
 terraform-graphx > graph.json
 ```
 
-**Example JSON Output:**
+**Example output:**
 
 ```json
 {
@@ -279,25 +92,13 @@ terraform-graphx > graph.json
       "id": "null_resource.cluster",
       "type": "null_resource",
       "provider": "registry.terraform.io/hashicorp/null",
-      "name": "cluster",
-      "attributes": {
-        "id": "...",
-        "triggers": {
-          "cluster_name": "my-cluster"
-        }
-      }
+      "name": "cluster"
     },
     {
       "id": "null_resource.app",
       "type": "null_resource",
       "provider": "registry.terraform.io/hashicorp/null",
-      "name": "app",
-      "attributes": {
-        "id": "...",
-        "triggers": {
-          "cluster_id": "..."
-        }
-      }
+      "name": "app"
     }
   ],
   "edges": [
@@ -310,19 +111,20 @@ terraform-graphx > graph.json
 }
 ```
 
-### Generating Cypher Statements
+### Generate Cypher Statements
 
-You can also output the graph as a series of Cypher `MERGE` statements, which are idempotent.
+Export as Neo4j-compatible Cypher statements:
 
 ```bash
 terraform-graphx --format=cypher > graph.cypher
 ```
 
-**Example Cypher Output:**
+**Example output:**
 
 ```cypher
 MERGE (n:Resource {id: 'null_resource.cluster'})
 SET n.type = 'null_resource', n.provider = 'registry.terraform.io/hashicorp/null', n.name = 'cluster';
+
 MERGE (n:Resource {id: 'null_resource.app'})
 SET n.type = 'null_resource', n.provider = 'registry.terraform.io/hashicorp/null', n.name = 'app';
 
@@ -330,137 +132,353 @@ MATCH (from:Resource {id: 'null_resource.app'}), (to:Resource {id: 'null_resourc
 MERGE (from)-[:DEPENDS_ON]->(to);
 ```
 
-### Updating a Neo4j Database
+### Update Neo4j Directly
 
-The `--update` flag allows you to push the graph directly into a Neo4j database. With the configuration file, this is much simpler:
+Push your infrastructure graph to Neo4j:
 
 ```bash
+# Using credentials from .terraform-graphx.yaml
 terraform-graphx --update
-```
 
-The tool will read the Neo4j credentials from your `.terraform-graphx.yaml` file.
-
-You can also override the configuration file settings using flags:
-
-```bash
+# Or specify credentials manually
 terraform-graphx --update \
   --neo4j-uri="bolt://localhost:7687" \
   --neo4j-user="neo4j" \
   --neo4j-pass="your-password"
 ```
 
-The tool uses idempotent `MERGE` statements, so you can run this command multiple times without creating duplicate nodes or relationships.
+### Analyze Terraform Plans
 
-## Quick Start Workflow
+Generate graphs from saved plans without applying them:
 
-Here's a complete workflow for using `terraform-graphx` with the built-in Docker management commands:
+```bash
+terraform plan -out=tfplan
+terraform-graphx --plan=tfplan --format=json
+```
 
-1. **Initialize configuration and data directory**
+## CLI Reference
 
-  ```bash
-  terraform-graphx init
-  ```
+### Commands
 
-  This generates `.terraform-graphx.yaml` with a secure password, creates the `neo4j-data/` directory, and keeps both out of version control.
+#### `terraform-graphx` (default)
 
-1. **Start the Neo4j container**
+Generate and output infrastructure graph.
 
-  ```bash
-  terraform-graphx start
-  ```
+**Flags:**
 
-  The command pulls the configured Neo4j image if needed and launches the container with the credentials from your config file.
+- `--format <json|cypher>` - Output format (default: `json`)
+- `--plan <file>` - Use existing Terraform plan file
+- `--update` - Push graph to Neo4j database
+- `--neo4j-uri <uri>` - Neo4j connection URI (default: `bolt://localhost:7687`)
+- `--neo4j-user <user>` - Neo4j username (default: `neo4j`)
+- `--neo4j-pass <password>` - Neo4j password
 
-1. **Verify the connection (optional but recommended)**
+**Examples:**
 
-  ```bash
-  terraform-graphx check database
-  ```
+```bash
+# Output JSON to stdout
+terraform-graphx
 
-  Ensures the CLI can reach the running Neo4j instance before attempting updates.
+# Output Cypher statements
+terraform-graphx --format=cypher
 
-1. **Generate or update the graph**
+# Analyze a saved plan
+terraform-graphx --plan=tfplan.binary
 
-  ```bash
-  terraform init
-  terraform-graphx --update
-  ```
+# Update Neo4j with custom credentials
+terraform-graphx --update --neo4j-pass=secret
+```
 
-  Run `terraform init` if your project isn't initialized yet, then push the graph to Neo4j using the credentials from `.terraform-graphx.yaml`.
+#### `terraform-graphx init`
 
-1. **Stop Neo4j when you're done**
+Initialize configuration and data directory for your project.
 
-  ```bash
-  terraform-graphx stop
-  ```
+**What it does:**
 
-  This gracefully stops and removes the container while preserving data inside `neo4j-data/` for the next session.
+- Creates `.terraform-graphx.yaml` with secure random password
+- Creates `neo4j-data/` directory for database persistence
+- Adds both to `.gitignore` (if in a Git repository)
 
-1. **Query your infrastructure in Neo4j Browser**
+**Example:**
 
-  Open <http://localhost:7474> and run Cypher queries like:
+```bash
+terraform-graphx init
+```
 
-  ```cypher
-  // Find all resources
-  MATCH (n:Resource) RETURN n
+#### `terraform-graphx start`
 
-  // Find all dependencies
-  MATCH (n:Resource)-[r:DEPENDS_ON]->(m:Resource) RETURN n, r, m
-  ```
+Start Neo4j Docker container with project-specific database.
 
-1. **When switching to another project**
+**What it does:**
 
-  ```bash
-  # Stop current container
-  docker stop terraform-graphx-neo4j
-  docker rm terraform-graphx-neo4j
+- Pulls Neo4j image (if not present)
+- Starts container named `terraform-graphx-neo4j`
+- Mounts local `neo4j-data/` directory
+- Uses credentials from `.terraform-graphx.yaml`
 
-  # Navigate to other project and repeat steps 1-5
-  ```
+**Example:**
 
-## CLI Commands
+```bash
+terraform-graphx start
+```
 
-### Graph generation (default command)
+**Important:** If `neo4j-data/` contains existing data, Neo4j will use the password stored in that data, **not** the password in your config file.
 
-- `terraform-graphx [--format=json|cypher] [--plan=PATH] [--update] [--neo4j-uri URI --neo4j-user USER --neo4j-pass PASS]`
-  - Runs the core workflow: calls `terraform graph`, parses the DOT output, and prints JSON (default) or Cypher.
-  - `--plan` accepts either the first positional argument or the named flag to reuse an existing plan.
-  - `--update` switches the output path to `updateNeo4jDatabase`, which requires valid credentials in `.terraform-graphx.yaml` or via flags.
-  - Hidden alias `terraform-graphx graphx ...` exists for backwards compatibility and shares the same flags.
+#### `terraform-graphx stop`
 
-### Configuration
+Stop and remove Neo4j container (preserves data).
 
-- `terraform-graphx init`
-  - Creates `.terraform-graphx.yaml` with a random password, provisions the `neo4j-data/` directory, and appends both paths to `.gitignore` when inside a Git repo.
+**Example:**
 
-### Local Neo4j lifecycle
+```bash
+terraform-graphx stop
+```
 
-- `terraform-graphx start`
-  - Uses the Docker SDK to pull `neo4j:community` (or the image in config), runs a container named `terraform-graphx-neo4j`, and mounts `neo4j-data/` to `/data`.
-  - Warns when existing data is detected because the on-disk password overrides the config value.
-- `terraform-graphx check database`
-  - Loads configuration, connects to Neo4j with `VerifyConnectivity`, and reports success or detailed failure messages.
-- `terraform-graphx stop`
-  - Stops and removes the managed container while leaving the data volume intact for the next session.
+#### `terraform-graphx check database`
 
-### Flag reference
+Verify Neo4j connection and credentials.
 
-- `--format <json|cypher>`: Controls stdout formatter; JSON is default.
-- `--plan <file>`: Reuse a saved Terraform plan instead of generating one on the fly.
-- `--update`: Writes the graph into Neo4j using idempotent MERGEs.
-- `--neo4j-uri <uri>`: Override the Bolt URI (default `bolt://localhost:7687`).
-- `--neo4j-user <user>`: Override the Neo4j username (default `neo4j`).
-- `--neo4j-pass <password>`: Override the Neo4j password (default empty until `init`).
+**Example:**
 
-Flags specified on the CLI override values in `.terraform-graphx.yaml`, which in turn override hard-coded defaults.
+```bash
+terraform-graphx check database
+```
+
+## Configuration
+
+### Configuration File
+
+`terraform-graphx init` creates a `.terraform-graphx.yaml` file:
+
+```yaml
+neo4j:
+  uri: bolt://localhost:7687
+  user: neo4j
+  password: <randomly-generated-password>
+  docker_image: neo4j:community
+```
+
+**⚠️ Security Note:** This file contains sensitive credentials and is automatically added to `.gitignore`.
+
+### Configuration Priority
+
+Settings are loaded in this order (highest to lowest priority):
+
+1. **Command-line flags** - Override everything
+2. **Configuration file** - `.terraform-graphx.yaml`
+3. **Default values** - Built-in defaults
+
+### Customizing Neo4j Image
+
+Edit `.terraform-graphx.yaml` to use a specific Neo4j version:
+
+```yaml
+neo4j:
+  docker_image: neo4j:5.15.0  # Use specific version
+```
+
+## Neo4j Database Management
+
+### Project-Specific Databases
+
+Neo4j Community Edition supports only one database per instance. `terraform-graphx` solves this by using project-specific data volumes (`neo4j-data/` in each project directory).
+
+**Benefits:**
+
+- Isolated graphs per Terraform project
+- Independent start/stop for each project
+- No conflicts between infrastructure states
+
+### Working with Multiple Projects
+
+```bash
+# Project A
+cd ~/projects/infrastructure-a
+terraform-graphx init
+terraform-graphx start
+terraform-graphx --update
+
+# Switch to Project B
+cd ~/projects/infrastructure-b
+terraform-graphx init
+terraform-graphx start  # Automatically uses Project B's data
+terraform-graphx --update
+
+# Return to Project A
+cd ~/projects/infrastructure-a
+terraform-graphx start  # Reconnects to Project A's data
+```
+
+### Handling Existing Data
+
+If you encounter authentication errors with existing data:
+
+#### Option 1: Fresh Start (Development/Testing)
+
+```bash
+terraform-graphx stop
+sudo rm -rf neo4j-data
+rm -f .terraform-graphx.yaml
+terraform-graphx init
+terraform-graphx start
+```
+
+#### Option 2: Use Existing Password (Production)
+
+Edit `.terraform-graphx.yaml` and update the password to match your existing database.
+
+### Manual Docker Setup (Advanced)
+
+If you prefer manual Docker management:
+
+```bash
+# Create data directory
+mkdir neo4j-data
+
+# Run Neo4j container
+docker run -d \
+  --name terraform-graphx-neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -v $(pwd)/neo4j-data:/data \
+  -e NEO4J_AUTH=neo4j/your-password \
+  neo4j:community
+
+# Update .terraform-graphx.yaml with your password
+# Then use: terraform-graphx --update
+```
+
+## Advanced Use Cases
+
+### AI-Enhanced Infrastructure Management
+
+`terraform-graphx` enables AI agents to understand and interact with your infrastructure through the **Model Context Protocol (MCP)**.
+
+**Architecture:**
+
+```text
+Terraform Infrastructure → terraform-graphx → Neo4j Graph Database
+                                                      ↓
+                                              Model Context Protocol
+                                                      ↓
+                                              AI Agents (Gemini, etc.)
+```
+
+**Capabilities enabled:**
+
+- **Context Understanding**: AI agents query the graph to understand relationships between hundreds/thousands of resources
+- **Impact Analysis**: Predict change ripple effects before applying Terraform plans
+- **Autonomous Operations**: AI generates plans and executes changes with full infrastructure context
+- **Knowledge Base**: Infrastructure becomes queryable knowledge rather than static files
+
+**Example MCP Queries:**
+
+```cypher
+// PROMPT: What will break if I delete this resource?
+MATCH (dependent:Resource)-[:DEPENDS_ON*]->(target:Resource {id: 'aws_vpc.main'})
+RETURN dependent.id
+
+// PROMPT: Find all resources of a specific type
+MATCH (n:Resource {type: 'aws_instance'})
+RETURN n.id, n.name
+
+// PROMPT: Detect circular dependencies
+MATCH path = (a:Resource)-[:DEPENDS_ON*]->(a)
+RETURN path
+```
 
 ## Development
 
-This project is written in Go and uses the Cobra library for the CLI. The code is structured to separate concerns, making it easier to maintain and test.
+### Project Structure
 
-- **`cmd/`**: Contains the Cobra CLI command definitions. These files are responsible for parsing flags and arguments and then delegating to the `runner`.
-- **`internal/runner`**: Orchestrates the application's workflow. It calls `terraform graph` and uses the other `internal` packages to parse the graph and handle output.
-- **`internal/config`**: Manages configuration loading from files and merging with command-line flags.
-- **`internal/parser`**: Parses the JSON graph output generated from `terraform graph` DOT format.
-- **`internal/formatter`**: Contains logic for JSON and Cypher output.
-- **`internal/neo4j`**: Handles all communication with the Neo4j database.
+```text
+cmd/                    # Cobra CLI command definitions
+  ├── root.go          # Main entrypoint
+  ├── graphx.go        # Graph generation command
+  ├── init.go          # Configuration initialization
+  ├── start.go         # Neo4j container start
+  ├── stop.go          # Neo4j container stop
+  └── check.go         # Database connectivity check
+
+internal/
+  ├── runner/          # Orchestrates terraform graph workflow
+  ├── config/          # Configuration loading and merging
+  ├── parser/          # DOT to JSON graph parsing
+  ├── formatter/       # JSON and Cypher output formatters
+  ├── neo4j/           # Neo4j client and database operations
+  └── graph/           # Graph data structures
+```
+
+### Building
+
+```bash
+# Build binary
+make build
+
+# Run unit tests
+make test-unit
+
+# Run end-to-end tests (requires Neo4j)
+make test-e2e
+
+# Run all tests
+make test-all
+
+# Clean build artifacts
+make clean
+```
+
+### Testing
+
+**Unit Tests:**
+
+```bash
+go test -v -short ./...
+```
+
+**E2E Tests:**
+
+Require running Neo4j instance with credentials in `.terraform-graphx.yaml`:
+
+```bash
+# Setup
+terraform-graphx init
+terraform-graphx start
+
+# Run tests
+make test-e2e
+```
+
+### Adding New Output Formats
+
+1. Add formatter function in `internal/formatter/formatter.go`
+2. Wire into `runner.formatAndPrintGraph` in `internal/runner/runner.go`
+3. Add flag option in `cmd/graphx.go`
+
+Example:
+
+```go
+// internal/formatter/formatter.go
+func ToYAML(graph *graph.Graph) (string, error) {
+    // Implementation
+}
+
+// internal/runner/runner.go
+case "yaml":
+    output, err = formatter.ToYAML(graphData)
+
+// cmd/graphx.go
+cmd.Flags().String("format", "json", "Output format (json, cypher, yaml)")
+```
+
+## License
+
+[Include your license information here]
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/daniellvog/terraform-graphx/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/daniellvog/terraform-graphx/discussions)
