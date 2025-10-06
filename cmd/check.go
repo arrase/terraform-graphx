@@ -29,7 +29,7 @@ This command will:
   4. Report the connection status
 
 Example:
-  terraform graphx check database`,
+	terraform-graphx check database`,
 	RunE: runCheckDatabase,
 }
 
