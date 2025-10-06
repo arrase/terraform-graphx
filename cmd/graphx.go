@@ -10,18 +10,14 @@ import (
 var graphxCmd = &cobra.Command{
 	Use:   "graphx [plan_file]",
 	Short: "Generate a dependency graph of Terraform resources",
-	Long: `terraform-graphx parses Terraform plan output and generates
-a dependency graph of your infrastructure.
-
-It works by parsing the output of 'terraform show -json' and can output
-the graph in various formats or update a Neo4j database.
+	Long: `terraform-graphx generates a dependency graph of your Terraform
+resources by invoking 'terraform graph' and converting the DOT output to JSON
+using 'dot -Tjson'. The resulting graph can be emitted as JSON or Cypher, or
+optionally pushed to a Neo4j database.
 
 Examples:
-  # Output the graph as JSON from stdin
-  terraform show -json . | terraform graphx
-
-  # Output the graph as JSON from a plan file
-  terraform graphx --format=json > graph.json
+  # Read a Terraform plan and output JSON graph
+  terraform graphx plan.tf > graph.json
 
   # Output the graph as Cypher statements
   terraform graphx --format=cypher > graph.cypher

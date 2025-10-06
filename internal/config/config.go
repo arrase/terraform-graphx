@@ -139,6 +139,12 @@ func Save(cfg *Config, path string) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
+	// Ensure the config file is only readable/writable by the owner (contains secrets)
+	if err := os.Chmod(path, 0600); err != nil {
+		// Not fatal: warn the caller but return success (file was written)
+		return fmt.Errorf("failed to set secure permissions on config file: %w", err)
+	}
+
 	return nil
 }
 
