@@ -31,6 +31,43 @@ terraform-graphx --update
 - **🤖 AI-Ready**: Perfect foundation for AI agents via Model Context Protocol (MCP)
 - **🔒 Secure by Default**: Auto-generated passwords, automatic `.gitignore` entries
 
+## AI-Enhanced Infrastructure Management
+
+`terraform-graphx` enables AI agents to understand and interact with your infrastructure through the **Model Context Protocol (MCP)**.
+
+**Architecture:**
+
+```text
+Terraform Infrastructure → terraform-graphx → Neo4j Graph Database
+                                                      ↓
+                                              Model Context Protocol
+                                                      ↓
+                                              AI Agents (Gemini, etc.)
+```
+
+**Capabilities enabled:**
+
+- **Context Understanding**: AI agents query the graph to understand relationships between hundreds/thousands of resources
+- **Impact Analysis**: Predict change ripple effects before applying Terraform plans
+- **Autonomous Operations**: AI generates plans and executes changes with full infrastructure context
+- **Knowledge Base**: Infrastructure becomes queryable knowledge rather than static files
+
+**Example MCP Queries:**
+
+```cypher
+// PROMPT: What will break if I delete this resource?
+MATCH (dependent:Resource)-[:DEPENDS_ON*]->(target:Resource {id: 'aws_vpc.main'})
+RETURN dependent.id
+
+// PROMPT: Find all resources of a specific type
+MATCH (n:Resource {type: 'aws_instance'})
+RETURN n.id, n.name
+
+// PROMPT: Detect circular dependencies
+MATCH path = (a:Resource)-[:DEPENDS_ON*]->(a)
+RETURN path
+```
+
 ## Installation
 
 ### Option 1: Download Pre-built Binary (Recommended)
@@ -345,45 +382,6 @@ docker run -d \
 
 # Update .terraform-graphx.yaml with your password
 # Then use: terraform-graphx --update
-```
-
-## Advanced Use Cases
-
-### AI-Enhanced Infrastructure Management
-
-`terraform-graphx` enables AI agents to understand and interact with your infrastructure through the **Model Context Protocol (MCP)**.
-
-**Architecture:**
-
-```text
-Terraform Infrastructure → terraform-graphx → Neo4j Graph Database
-                                                      ↓
-                                              Model Context Protocol
-                                                      ↓
-                                              AI Agents (Gemini, etc.)
-```
-
-**Capabilities enabled:**
-
-- **Context Understanding**: AI agents query the graph to understand relationships between hundreds/thousands of resources
-- **Impact Analysis**: Predict change ripple effects before applying Terraform plans
-- **Autonomous Operations**: AI generates plans and executes changes with full infrastructure context
-- **Knowledge Base**: Infrastructure becomes queryable knowledge rather than static files
-
-**Example MCP Queries:**
-
-```cypher
-// PROMPT: What will break if I delete this resource?
-MATCH (dependent:Resource)-[:DEPENDS_ON*]->(target:Resource {id: 'aws_vpc.main'})
-RETURN dependent.id
-
-// PROMPT: Find all resources of a specific type
-MATCH (n:Resource {type: 'aws_instance'})
-RETURN n.id, n.name
-
-// PROMPT: Detect circular dependencies
-MATCH path = (a:Resource)-[:DEPENDS_ON*]->(a)
-RETURN path
 ```
 
 ## Development
