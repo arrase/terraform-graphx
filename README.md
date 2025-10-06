@@ -420,28 +420,39 @@ Here's a complete workflow for using `terraform-graphx` with the built-in Docker
 
 ## CLI Commands
 
-### Configuration Commands
+### Graph generation (default command)
 
-- `terraform-graphx init` - Create a `.terraform-graphx.yaml` configuration file with default values
-- `terraform-graphx check database` - Verify Neo4j database connectivity using the configuration file
+- `terraform-graphx [--format=json|cypher] [--plan=PATH] [--update] [--neo4j-uri URI --neo4j-user USER --neo4j-pass PASS]`
+  - Runs the core workflow: calls `terraform graph`, parses the DOT output, and prints JSON (default) or Cypher.
+  - `--plan` accepts either the first positional argument or the named flag to reuse an existing plan.
+  - `--update` switches the output path to `updateNeo4jDatabase`, which requires valid credentials in `.terraform-graphx.yaml` or via flags.
+  - Hidden alias `terraform-graphx graphx ...` exists for backwards compatibility and shares the same flags.
 
-### Graph Commands
+### Configuration
 
-- `terraform-graphx` - Generate and output the dependency graph (default format: JSON)
-- `terraform-graphx --format=<format>` - Specify output format (`json` or `cypher`)
-- `terraform-graphx --update` - Update the Neo4j database with the current infrastructure graph
-- `terraform-graphx --plan=<file>` - Use a specific Terraform plan file instead of generating one
+- `terraform-graphx init`
+  - Creates `.terraform-graphx.yaml` with a random password, provisions the `neo4j-data/` directory, and appends both paths to `.gitignore` when inside a Git repo.
 
-### Flags
+### Local Neo4j lifecycle
 
-- `--format <format>`: The output format for the graph. Can be `json` (default) or `cypher`.
-- `--plan <file>`: Path to a pre-generated Terraform plan file. If not provided, `terraform-graphx` will generate one.
-- `--update`: A boolean flag to enable updating a Neo4j database.
-- `--neo4j-uri <uri>`: Override the Neo4j URI from the config file (e.g., `bolt://localhost:7687`).
-- `--neo4j-user <user>`: Override the Neo4j username from the config file.
-- `--neo4j-pass <password>`: Override the Neo4j password from the config file.
+- `terraform-graphx start`
+  - Uses the Docker SDK to pull `neo4j:community` (or the image in config), runs a container named `terraform-graphx-neo4j`, and mounts `neo4j-data/` to `/data`.
+  - Warns when existing data is detected because the on-disk password overrides the config value.
+- `terraform-graphx check database`
+  - Loads configuration, connects to Neo4j with `VerifyConnectivity`, and reports success or detailed failure messages.
+- `terraform-graphx stop`
+  - Stops and removes the managed container while leaving the data volume intact for the next session.
 
-**Note:** Command-line flags take precedence over configuration file settings.
+### Flag reference
+
+- `--format <json|cypher>`: Controls stdout formatter; JSON is default.
+- `--plan <file>`: Reuse a saved Terraform plan instead of generating one on the fly.
+- `--update`: Writes the graph into Neo4j using idempotent MERGEs.
+- `--neo4j-uri <uri>`: Override the Bolt URI (default `bolt://localhost:7687`).
+- `--neo4j-user <user>`: Override the Neo4j username (default `neo4j`).
+- `--neo4j-pass <password>`: Override the Neo4j password (default empty until `init`).
+
+Flags specified on the CLI override values in `.terraform-graphx.yaml`, which in turn override hard-coded defaults.
 
 ## Development
 
