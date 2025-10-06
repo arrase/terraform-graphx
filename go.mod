@@ -3,6 +3,7 @@ module terraform-graphx
 go 1.24.3
 
 require (
+	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/docker/docker v28.5.0+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.3

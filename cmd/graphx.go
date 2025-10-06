@@ -12,7 +12,7 @@ var graphxCmd = &cobra.Command{
 	Short: "Generate a dependency graph of Terraform resources",
 	Long: `terraform-graphx generates a dependency graph of your Terraform
 resources by invoking 'terraform graph' and converting the DOT output to JSON
-using 'dot -Tjson'. The resulting graph can be emitted as JSON or Cypher, or
+using the go-graphviz library. The resulting graph can be emitted as JSON or Cypher, or
 optionally pushed to a Neo4j database.
 
 Examples:

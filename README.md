@@ -256,7 +256,6 @@ Navigate to your Terraform project directory and run the `terraform-graphx` comm
 ### Prerequisites
 
 - **Terraform**: You must have `terraform` installed and have initialized your project with `terraform init`.
-- **Graphviz**: You must have Graphviz installed, as this tool uses the `dot` command to generate the graph.
 
 ### Generating a JSON Graph
 
@@ -449,6 +448,6 @@ This project is written in Go and uses the Cobra library for the CLI. The code i
 - **`cmd/`**: Contains the Cobra CLI command definitions. These files are responsible for parsing flags and arguments and then delegating to the `runner`.
 - **`internal/runner`**: Orchestrates the application's workflow. It calls `terraform graph` and uses the other `internal` packages to parse the graph and handle output.
 - **`internal/config`**: Manages configuration loading from files and merging with command-line flags.
-- **`internal/parser`**: Executes `dot -Tjson` and parses the output from `terraform graph`.
+- **`internal/parser`**: Parses the JSON graph output generated from `terraform graph` DOT format.
 - **`internal/formatter`**: Contains logic for JSON and Cypher output.
 - **`internal/neo4j`**: Handles all communication with the Neo4j database.

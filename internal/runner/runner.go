@@ -1,8 +1,8 @@
 package runner
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +12,8 @@ import (
 	"terraform-graphx/internal/graph"
 	"terraform-graphx/internal/neo4j"
 	graphparser "terraform-graphx/internal/parser"
+
+	"github.com/awalterschulze/gographviz"
 )
 
 // Run executes the main logic of terraform-graphx.
@@ -34,7 +36,7 @@ func Run(cfg *config.Config) error {
 	return handleOutput(g, cfg)
 }
 
-// generateGraphData runs `terraform graph` and `dot` to get a JSON representation of the graph.
+// generateGraphData runs `terraform graph` and uses gographviz to convert DOT to JSON.
 func generateGraphData(planFile string) ([]byte, error) {
 	var graphArgs []string
 	if planFile != "" {
@@ -42,35 +44,105 @@ func generateGraphData(planFile string) ([]byte, error) {
 	}
 
 	terraformGraphCmd := exec.Command("terraform", append([]string{"graph"}, graphArgs...)...)
-	dotCmd := exec.Command("dot", "-Tjson")
 
-	var dotStdout, dotStderr bytes.Buffer
-	dotCmd.Stdout = &dotStdout
-	dotCmd.Stderr = &dotStderr
-
-	pipe, err := terraformGraphCmd.StdoutPipe()
+	// Get DOT output from terraform graph
+	dotOutput, err := terraformGraphCmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pipe: %w", err)
-	}
-	dotCmd.Stdin = pipe
-
-	if err := terraformGraphCmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start terraform graph command: %w", err)
+		return nil, fmt.Errorf("terraform graph command failed: %w - %s", err, string(dotOutput))
 	}
 
-	if err := dotCmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start dot command: %w", err)
+	// Parse DOT using gographviz and build graph
+	graphAst, err := gographviz.ParseString(string(dotOutput))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DOT output: %w", err)
 	}
 
-	if err := terraformGraphCmd.Wait(); err != nil {
-		return nil, fmt.Errorf("terraform graph command failed: %w", err)
+	// Convert AST to Graph structure
+	graph := gographviz.NewGraph()
+	if err := gographviz.Analyse(graphAst, graph); err != nil {
+		return nil, fmt.Errorf("failed to analyse graph: %w", err)
 	}
 
-	if err := dotCmd.Wait(); err != nil {
-		return nil, fmt.Errorf("dot command failed: %w - %s", err, dotStderr.String())
+	// Convert the parsed graph to JSON format
+	// The format is compatible with what the parser expects (dot -Tjson format)
+	jsonOutput, err := convertGraphToJSON(graph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert graph to JSON: %w", err)
 	}
 
-	return dotStdout.Bytes(), nil
+	return jsonOutput, nil
+}
+
+// convertGraphToJSON converts a gographviz.Graph to the JSON format expected by the parser
+// This mimics the output format of `dot -Tjson`
+func convertGraphToJSON(g *gographviz.Graph) ([]byte, error) {
+	type jsonNode struct {
+		ID    int    `json:"_gvid"`
+		Name  string `json:"name"`
+		Label string `json:"label,omitempty"`
+	}
+
+	type jsonEdge struct {
+		Tail int `json:"tail"`
+		Head int `json:"head"`
+	}
+
+	type jsonGraph struct {
+		Objects []jsonNode `json:"objects"`
+		Edges   []jsonEdge `json:"edges"`
+	}
+
+	// Build node map
+	nodeMap := make(map[string]int)
+	nodes := []jsonNode{}
+	nodeID := 0
+
+	for nodeName, node := range g.Nodes.Lookup {
+		// Remove quotes from node name
+		cleanName := nodeName
+		if len(cleanName) >= 2 && cleanName[0] == '"' && cleanName[len(cleanName)-1] == '"' {
+			cleanName = cleanName[1 : len(cleanName)-1]
+		}
+
+		label := cleanName
+		if node.Attrs != nil {
+			if labelAttr, ok := node.Attrs["label"]; ok {
+				// Remove quotes from label
+				label = labelAttr
+				if len(label) >= 2 && label[0] == '"' && label[len(label)-1] == '"' {
+					label = label[1 : len(label)-1]
+				}
+			}
+		}
+
+		nodes = append(nodes, jsonNode{
+			ID:    nodeID,
+			Name:  cleanName,
+			Label: label,
+		})
+		nodeMap[nodeName] = nodeID
+		nodeID++
+	}
+
+	// Build edges
+	edges := []jsonEdge{}
+	for _, edge := range g.Edges.Edges {
+		if tailID, ok := nodeMap[edge.Src]; ok {
+			if headID, ok := nodeMap[edge.Dst]; ok {
+				edges = append(edges, jsonEdge{
+					Tail: tailID,
+					Head: headID,
+				})
+			}
+		}
+	}
+
+	result := jsonGraph{
+		Objects: nodes,
+		Edges:   edges,
+	}
+
+	return json.Marshal(result)
 }
 
 // handleOutput decides whether to update Neo4j or format and print the graph.
