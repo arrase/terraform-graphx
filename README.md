@@ -12,7 +12,7 @@ Below is an example of a dependency graph visualized in Neo4j Browser:
 
 ## Features
 
-- **Standalone Binary**: A single Go binary that acts as a Terraform subcommand (`terraform graphx`).
+- **Standalone Binary**: A single Go binary that can be used as a command-line tool (`terraform-graphx`).
 - **Machine-Readable Output**: Generates a dependency graph in JSON or Cypher format.
 - **Neo4j Integration**: Can directly update a Neo4j database with the graph data.
 - **Modular Design**: Built with separate components for parsing, graph building, and output formatting.
@@ -140,7 +140,7 @@ Neo4j Community Edition has a limitation: it only supports one database per inst
 Create a configuration file in your project directory:
 
 ```bash
-terraform graphx init config
+terraform-graphx init config
 ```
 
 This creates a `.terraform-graphx.yaml` file with default values:
@@ -154,7 +154,7 @@ neo4j:
 
 **Important:** Edit this file and set your Neo4j password. This file contains sensitive credentials and should **not** be committed to version control.
 
-When you run `terraform graphx init config`, the command will automatically add `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository. This helps prevent accidentally committing sensitive credentials and local database files.
+When you run `terraform-graphx init config`, the command will automatically add `.terraform-graphx.yaml` and `neo4j-data/` to your `.gitignore` file if you are in a Git repository. This helps prevent accidentally committing sensitive credentials and local database files.
 
 If you initialize a Git repository *after* running `init config`, please make sure to add them to your `.gitignore` file manually.
 
@@ -163,7 +163,7 @@ If you initialize a Git repository *after* running `init config`, please make su
 Before using terraform-graphx, verify that the connection to Neo4j works:
 
 ```bash
-terraform graphx check database
+terraform-graphx check database
 ```
 
 This command will:
@@ -184,7 +184,7 @@ This allows you to override configuration file settings with flags when needed.
 
 ## Usage
 
-Navigate to your Terraform project directory and run the `graphx` subcommand.
+Navigate to your Terraform project directory and run the `terraform-graphx` command.
 
 ### Prerequisites
 
@@ -196,7 +196,7 @@ Navigate to your Terraform project directory and run the `graphx` subcommand.
 By default, `terraform-graphx` outputs the dependency graph in JSON format.
 
 ```bash
-terraform graphx > graph.json
+terraform-graphx > graph.json
 ```
 
 **Example JSON Output:**
@@ -244,7 +244,7 @@ terraform graphx > graph.json
 You can also output the graph as a series of Cypher `MERGE` statements, which are idempotent.
 
 ```bash
-terraform graphx --format=cypher > graph.cypher
+terraform-graphx --format=cypher > graph.cypher
 ```
 
 **Example Cypher Output:**
@@ -264,7 +264,7 @@ MERGE (from)-[:DEPENDS_ON]->(to);
 The `--update` flag allows you to push the graph directly into a Neo4j database. With the configuration file, this is much simpler:
 
 ```bash
-terraform graphx --update
+terraform-graphx --update
 ```
 
 The tool will read the Neo4j credentials from your `.terraform-graphx.yaml` file.
@@ -272,7 +272,7 @@ The tool will read the Neo4j credentials from your `.terraform-graphx.yaml` file
 You can also override the configuration file settings using flags:
 
 ```bash
-terraform graphx --update \
+terraform-graphx --update \
   --neo4j-uri="bolt://localhost:7687" \
   --neo4j-user="neo4j" \
   --neo4j-pass="your-password"
@@ -303,7 +303,7 @@ Here's a complete workflow for using `terraform-graphx` with Neo4j:
 
     ```bash
     # Create config file
-    terraform graphx init config
+    terraform-graphx init config
     
     # Edit .terraform-graphx.yaml and set your password
     # neo4j:
@@ -315,7 +315,7 @@ Here's a complete workflow for using `terraform-graphx` with Neo4j:
 3. **Verify the connection:**
 
     ```bash
-    terraform graphx check database
+    terraform-graphx check database
     ```
 
 4. **Update the graph in Neo4j:**
@@ -325,7 +325,7 @@ Here's a complete workflow for using `terraform-graphx` with Neo4j:
     terraform init
     
     # Update the graph
-    terraform graphx --update
+    terraform-graphx --update
     ```
 
 5. **Query your infrastructure in Neo4j Browser:**
@@ -354,15 +354,15 @@ Here's a complete workflow for using `terraform-graphx` with Neo4j:
 
 ### Configuration Commands
 
-- `terraform graphx init config` - Create a `.terraform-graphx.yaml` configuration file with default values
-- `terraform graphx check database` - Verify Neo4j database connectivity using the configuration file
+- `terraform-graphx init config` - Create a `.terraform-graphx.yaml` configuration file with default values
+- `terraform-graphx check database` - Verify Neo4j database connectivity using the configuration file
 
 ### Graph Commands
 
-- `terraform graphx` - Generate and output the dependency graph (default format: JSON)
-- `terraform graphx --format=<format>` - Specify output format (`json` or `cypher`)
-- `terraform graphx --update` - Update the Neo4j database with the current infrastructure graph
-- `terraform graphx --plan=<file>` - Use a specific Terraform plan file instead of generating one
+- `terraform-graphx` - Generate and output the dependency graph (default format: JSON)
+- `terraform-graphx --format=<format>` - Specify output format (`json` or `cypher`)
+- `terraform-graphx --update` - Update the Neo4j database with the current infrastructure graph
+- `terraform-graphx --plan=<file>` - Use a specific Terraform plan file instead of generating one
 
 ### Flags
 
