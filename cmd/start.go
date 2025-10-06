@@ -58,10 +58,25 @@ func runStart(cmd *cobra.Command, args []string) error {
 	hasExistingData := false
 
 	if _, err := os.Stat(dataDir); err == nil {
-		// Check if there's existing Neo4j data (dbms directory indicates initialized database)
+		// Check if there's existing Neo4j data
 		dbmsDir := filepath.Join(dataDir, "dbms")
-		if _, err := os.Stat(dbmsDir); err == nil {
-			hasExistingData = true
+		if stat, err := os.Stat(dbmsDir); err == nil {
+			// Check if dbms directory has content (a properly initialized database)
+			entries, err := os.ReadDir(dbmsDir)
+			if err == nil && len(entries) > 0 {
+				hasExistingData = true
+			} else if err == nil && len(entries) == 0 {
+				// Empty dbms directory means partial initialization - remove it
+				fmt.Println("⚠ Warning: Found empty dbms directory (partial initialization)")
+				fmt.Println("  Removing partial data to allow clean initialization...")
+				if err := os.Remove(dbmsDir); err != nil {
+					return fmt.Errorf("failed to remove empty dbms directory: %w", err)
+				}
+				fmt.Println("✓ Partial data removed")
+			} else if stat.IsDir() {
+				// Can't read directory, might be a permission issue but let's try anyway
+				hasExistingData = true
+			}
 		}
 	} else if os.IsNotExist(err) {
 		return fmt.Errorf("neo4j-data directory does not exist, please run 'terraform-graphx init' first")
@@ -72,7 +87,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 		fmt.Println("⚠ Warning: Existing Neo4j data detected in neo4j-data directory")
 		fmt.Println("  Neo4j will use the password from the existing database, NOT from the config file.")
 		fmt.Println("  If you don't know the existing password, you can:")
-		fmt.Printf("    1. Delete the neo4j-data directory and run 'terraform-graphx start' again\n")
+		fmt.Printf("    1. Remove neo4j-data/dbms and run 'terraform-graphx start' again\n")
 		fmt.Printf("    2. Or update the password in .terraform-graphx.yaml to match the existing database\n")
 		fmt.Println()
 	}
@@ -128,6 +143,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 		Image: cfg.Neo4j.DockerImage,
 		Env: []string{
 			fmt.Sprintf("NEO4J_AUTH=%s/%s", cfg.Neo4j.User, cfg.Neo4j.Password),
+			"NEO4J_ACCEPT_LICENSE_AGREEMENT=yes",
 		},
 		ExposedPorts: nat.PortSet{
 			"7474/tcp": struct{}{},

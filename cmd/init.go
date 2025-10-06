@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -80,13 +79,18 @@ func runInit(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// generateRandomPassword generates a random password of the specified length
+// generateRandomPassword generates a random alphanumeric password of the specified length
 func generateRandomPassword(length int) (string, error) {
+	// Use only alphanumeric characters to avoid issues with special characters in Neo4j auth string
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+	for i := range bytes {
+		bytes[i] = charset[int(bytes[i])%len(charset)]
+	}
+	return string(bytes), nil
 }
 
 // updateGitignore checks if the current directory is a git repository and if so,
