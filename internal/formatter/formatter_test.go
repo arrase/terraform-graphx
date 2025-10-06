@@ -2,8 +2,8 @@ package formatter
 
 import (
 	"strings"
-	"testing"
 	"terraform-graphx/internal/graph"
+	"testing"
 )
 
 var testGraph = &graph.Graph{
