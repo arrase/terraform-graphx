@@ -90,7 +90,7 @@ func TestE2E_FullWorkflow(t *testing.T) {
 	t.Run("3_GenerateJSONOutput", func(t *testing.T) {
 		examplesDir := filepath.Join(".", "examples")
 
-		cmd := exec.Command(getBinaryPath(), "graphx", "--format=json")
+		cmd := exec.Command(getBinaryPath(), "--format=json")
 		cmd.Dir = examplesDir
 
 		output, err := cmd.CombinedOutput()
@@ -146,12 +146,12 @@ func TestE2E_FullWorkflow(t *testing.T) {
 	t.Run("4_GenerateCypherOutput", func(t *testing.T) {
 		examplesDir := filepath.Join(".", "examples")
 
-		cmd := exec.Command(getBinaryPath(), "graphx", "--format=cypher")
+		cmd := exec.Command(getBinaryPath(), "--format=cypher")
 		cmd.Dir = examplesDir
 
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("graphx cypher failed: %v\nOutput: %s", err, output)
+			t.Fatalf("cypher output failed: %v\nOutput: %s", err, output)
 		}
 
 		outputStr := string(output)
@@ -177,7 +177,7 @@ func TestE2E_FullWorkflow(t *testing.T) {
 	t.Run("5_InsertIntoNeo4j", func(t *testing.T) {
 		examplesDir := filepath.Join(".", "examples")
 
-		cmd := exec.Command(getBinaryPath(), "graphx", "--update")
+		cmd := exec.Command(getBinaryPath(), "update")
 		cmd.Dir = examplesDir
 
 		output, err := cmd.CombinedOutput()
@@ -264,7 +264,7 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		countBefore := countNodesInNeo4j(t, ctx, client)
 
 		// Update again
-		cmd := exec.Command(getBinaryPath(), "graphx", "--update")
+		cmd := exec.Command(getBinaryPath(), "update")
 		cmd.Dir = examplesDir
 
 		output, err := cmd.CombinedOutput()

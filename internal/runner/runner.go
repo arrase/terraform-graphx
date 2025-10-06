@@ -205,7 +205,7 @@ func formatAndPrintGraph(g *graph.Graph, format string) error {
 
 func validateNeo4jConfig(cfg *config.Neo4jConfig) error {
 	if cfg.URI == "" || cfg.User == "" || cfg.Password == "" {
-		return fmt.Errorf("neo4j-uri, neo4j-user, and neo4j-pass are required when using --update")
+		return fmt.Errorf("neo4j-uri, neo4j-user, and neo4j-pass are required when using the update command. Please configure them in .terraform-graphx.yaml or pass them as flags")
 	}
 	return nil
 }

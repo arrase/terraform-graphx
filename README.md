@@ -4,24 +4,6 @@ A CLI tool that generates dependency graphs from your Terraform infrastructure a
 
 ![Example Graph](screenshoot.png)
 
-## Quick Start
-
-Get up and running in 3 simple steps:
-
-```bash
-# 1. Initialize configuration and Neo4j database
-terraform-graphx init
-terraform-graphx start
-
-# 2. Generate and visualize your infrastructure graph
-terraform-graphx --update
-
-# 3. Open Neo4j Browser and explore
-# Visit http://localhost:7474
-# Username: neo4j
-# Password: (shown during init)
-```
-
 ## Features
 
 - **🚀 Zero Configuration Start**: Built-in Docker support manages Neo4j automatically
@@ -112,178 +94,25 @@ sudo mv terraform-graphx /usr/local/bin/
 - Terraform installed and project initialized (`terraform init`)
 - Docker installed (for built-in Neo4j support)
 
-### Generate JSON Output
+### Quick Start
 
-Export your infrastructure graph to JSON:
-
-```bash
-terraform-graphx > graph.json
-```
-
-**Example output:**
-
-```json
-{
-  "nodes": [
-    {
-      "id": "null_resource.cluster",
-      "type": "null_resource",
-      "provider": "registry.terraform.io/hashicorp/null",
-      "name": "cluster"
-    },
-    {
-      "id": "null_resource.app",
-      "type": "null_resource",
-      "provider": "registry.terraform.io/hashicorp/null",
-      "name": "app"
-    }
-  ],
-  "edges": [
-    {
-      "from": "null_resource.app",
-      "to": "null_resource.cluster",
-      "relation": "DEPENDS_ON"
-    }
-  ]
-}
-```
-
-### Generate Cypher Statements
-
-Export as Neo4j-compatible Cypher statements:
+Get up and running in 3 simple steps:
 
 ```bash
-terraform-graphx --format=cypher > graph.cypher
-```
-
-**Example output:**
-
-```cypher
-MERGE (n:Resource {id: 'null_resource.cluster'})
-SET n.type = 'null_resource', n.provider = 'registry.terraform.io/hashicorp/null', n.name = 'cluster';
-
-MERGE (n:Resource {id: 'null_resource.app'})
-SET n.type = 'null_resource', n.provider = 'registry.terraform.io/hashicorp/null', n.name = 'app';
-
-MATCH (from:Resource {id: 'null_resource.app'}), (to:Resource {id: 'null_resource.cluster'})
-MERGE (from)-[:DEPENDS_ON]->(to);
-```
-
-### Update Neo4j Directly
-
-Push your infrastructure graph to Neo4j:
-
-```bash
-# Using credentials from .terraform-graphx.yaml
-terraform-graphx --update
-
-# Or specify credentials manually
-terraform-graphx --update \
-  --neo4j-uri="bolt://localhost:7687" \
-  --neo4j-user="neo4j" \
-  --neo4j-pass="your-password"
-```
-
-### Analyze Terraform Plans
-
-Generate graphs from saved plans without applying them:
-
-```bash
-terraform plan -out=tfplan
-terraform-graphx --plan=tfplan --format=json
-```
-
-## CLI Reference
-
-### Commands
-
-#### `terraform-graphx` (default)
-
-Generate and output infrastructure graph.
-
-**Flags:**
-
-- `--format <json|cypher>` - Output format (default: `json`)
-- `--plan <file>` - Use existing Terraform plan file
-- `--update` - Push graph to Neo4j database
-- `--neo4j-uri <uri>` - Neo4j connection URI (default: `bolt://localhost:7687`)
-- `--neo4j-user <user>` - Neo4j username (default: `neo4j`)
-- `--neo4j-pass <password>` - Neo4j password
-
-**Examples:**
-
-```bash
-# Output JSON to stdout
-terraform-graphx
-
-# Output Cypher statements
-terraform-graphx --format=cypher
-
-# Analyze a saved plan
-terraform-graphx --plan=tfplan.binary
-
-# Update Neo4j with custom credentials
-terraform-graphx --update --neo4j-pass=secret
-```
-
-#### `terraform-graphx init`
-
-Initialize configuration and data directory for your project.
-
-**What it does:**
-
-- Creates `.terraform-graphx.yaml` with secure random password
-- Creates `neo4j-data/` directory for database persistence
-- Adds both to `.gitignore` (if in a Git repository)
-
-**Example:**
-
-```bash
+# 1. Initialize configuration and Neo4j database
 terraform-graphx init
-```
-
-#### `terraform-graphx start`
-
-Start Neo4j Docker container with project-specific database.
-
-**What it does:**
-
-- Pulls Neo4j image (if not present)
-- Starts container named `terraform-graphx-neo4j`
-- Mounts local `neo4j-data/` directory
-- Uses credentials from `.terraform-graphx.yaml`
-
-**Example:**
-
-```bash
 terraform-graphx start
+
+# 2. Generate and visualize your infrastructure graph
+terraform-graphx update
+
+# 3. Open Neo4j Browser and explore
+# Visit http://localhost:7474
+# Username: neo4j
+# Password: (shown during init)
 ```
 
-**Important:** If `neo4j-data/` contains existing data, Neo4j will use the password stored in that data, **not** the password in your config file.
-
-#### `terraform-graphx stop`
-
-Stop and remove Neo4j container (preserves data).
-
-**Example:**
-
-```bash
-terraform-graphx stop
-```
-
-#### `terraform-graphx check database`
-
-Verify Neo4j connection and credentials.
-
-**Example:**
-
-```bash
-terraform-graphx check database
-```
-
-## Configuration
-
-### Configuration File
+## Configuration File
 
 `terraform-graphx init` creates a `.terraform-graphx.yaml` file:
 
@@ -333,13 +162,13 @@ Neo4j Community Edition supports only one database per instance. `terraform-grap
 cd ~/projects/infrastructure-a
 terraform-graphx init
 terraform-graphx start
-terraform-graphx --update
+terraform-graphx update
 
 # Switch to Project B
 cd ~/projects/infrastructure-b
 terraform-graphx init
 terraform-graphx start  # Automatically uses Project B's data
-terraform-graphx --update
+terraform-graphx update
 
 # Return to Project A
 cd ~/projects/infrastructure-a
@@ -381,7 +210,7 @@ docker run -d \
   neo4j:community
 
 # Update .terraform-graphx.yaml with your password
-# Then use: terraform-graphx --update
+# Then use: terraform-graphx update
 ```
 
 ## Development
@@ -390,8 +219,8 @@ docker run -d \
 
 ```text
 cmd/                    # Cobra CLI command definitions
-  ├── root.go          # Main entrypoint
-  ├── graphx.go        # Graph generation command
+  ├── root.go          # Main entrypoint and graph generation
+  ├── update.go        # Neo4j update command
   ├── init.go          # Configuration initialization
   ├── start.go         # Neo4j container start
   ├── stop.go          # Neo4j container stop
@@ -464,7 +293,7 @@ func ToYAML(graph *graph.Graph) (string, error) {
 case "yaml":
     output, err = formatter.ToYAML(graphData)
 
-// cmd/graphx.go
+// cmd/root.go
 cmd.Flags().String("format", "json", "Output format (json, cypher, yaml)")
 ```
 
