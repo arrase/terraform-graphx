@@ -38,7 +38,7 @@ The easiest way to install `terraform-graphx` is to download the latest release 
 
 1. Download the archive for your operating system and architecture.
 2. Extract the `terraform-graphx` binary.
-3. Move the binary to a directory in your system's `PATH`. The binary must be named `terraform-graphx` for Terraform to detect it as a subcommand.
+3. Move the binary to a directory in your system's `PATH`.
 
 **Example for Linux/macOS:**
 
