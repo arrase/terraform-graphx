@@ -13,7 +13,7 @@ This CLI converts Terraform dependency graphs into Neo4j graph databases. The pi
 
 ### CLI Entry Point (`cmd/`)
 - `cmd/root.go`: Displays help only; subcommands registered via `init()` in their files
-- `cmd/update.go`: Sets `cfg.Update = true`, then runs `runner.Run` → pushes to Neo4j
+- `cmd/update.go`: Runs `runner.Run` to push graph to Neo4j
 - `cmd/init.go`: Generates `.terraform-graphx.yaml` + random 16-char password, creates `neo4j-data/`, updates `.gitignore`
 - `cmd/start.go`: Uses Docker Go SDK (not shell) to pull `neo4j:community`, mount `neo4j-data` → `/data`, warns about existing data/password conflicts
 - `cmd/stop.go`: Removes container but keeps volume
@@ -51,7 +51,7 @@ Precedence: **CLI flags > `.terraform-graphx.yaml` > defaults**
 - `LoadAndMerge(cmd, args)`: Overlays flags onto loaded config
 - `Save()`: Enforces 0600 permissions for security (password stored in plaintext)
 
-**Default values**: `bolt://localhost:7687`, user `neo4j`, no update mode
+**Default values**: `bolt://localhost:7687`, user `neo4j`
 
 ## Developer Workflows
 

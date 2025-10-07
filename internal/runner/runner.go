@@ -145,9 +145,6 @@ func convertGraphToJSON(g *gographviz.Graph) ([]byte, error) {
 
 // handleOutput updates the Neo4j database with the graph data.
 func handleOutput(g *graph.Graph, cfg *config.Config) error {
-	if !cfg.Update {
-		return fmt.Errorf("no operation specified. Use the 'update' command to push data to Neo4j")
-	}
 	return updateNeo4jDatabase(g, &cfg.Neo4j)
 }
 

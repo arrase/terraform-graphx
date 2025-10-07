@@ -24,9 +24,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Force update mode
-	cfg.Update = true
-
 	return runner.Run(cfg)
 }
 

@@ -18,7 +18,6 @@ const (
 type Config struct {
 	Neo4j    Neo4jConfig `mapstructure:"neo4j"`
 	PlanFile string      `mapstructure:"planfile"`
-	Update   bool        `mapstructure:"update"`
 }
 
 // Neo4jConfig holds the Neo4j connection settings.
@@ -39,7 +38,6 @@ func DefaultConfig() *Config {
 			DockerImage: "neo4j:community",
 		},
 		PlanFile: "",
-		Update:   false,
 	}
 }
 
@@ -86,10 +84,6 @@ func LoadAndMerge(cmd *cobra.Command, args []string) (*Config, error) {
 	}
 
 	// Override with flags
-	if cmd.Flags().Changed("update") {
-		cfg.Update, _ = cmd.Flags().GetBool("update")
-	}
-
 	if cmd.Flags().Changed("neo4j-user") {
 		cfg.Neo4j.User, _ = cmd.Flags().GetString("neo4j-user")
 	}
