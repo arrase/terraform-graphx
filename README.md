@@ -2,7 +2,7 @@
 
 A CLI tool that generates dependency graphs from your Terraform infrastructure and stores them in Neo4j for powerful querying and visualization.
 
-![Example Graph](screenshoot.png)
+![Example Graph](screenshot.png)
 
 ## Features
 
