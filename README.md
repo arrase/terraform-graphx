@@ -53,7 +53,7 @@ RETURN path
 
 ### Option 1: Download Pre-built Binary (Recommended)
 
-Download the latest release for your platform from the [GitHub Releases](https://github.com/daniellvog/terraform-graphx/releases) page.
+Download the latest release for your platform from the [GitHub Releases](https://github.com/arrase/terraform-graphx/releases) page.
 
 **Linux/macOS:**
 
@@ -77,10 +77,10 @@ terraform-graphx --help
 
 ### Option 2: Build from Source
 
-Requirements: Go 1.22 or later
+Requirements: Go 1.24 or later
 
 ```bash
-git clone https://github.com/daniellvog/terraform-graphx.git
+git clone https://github.com/arrase/terraform-graphx.git
 cd terraform-graphx
 go build -o terraform-graphx .
 sudo mv terraform-graphx /usr/local/bin/
@@ -218,8 +218,8 @@ docker run -d \
 
 ```text
 cmd/                    # Cobra CLI command definitions
-  ├── root.go          # Main entrypoint and graph generation
-  ├── update.go        # Neo4j update command
+  ├── root.go          # Root command definition (help/info)
+  ├── update.go        # Neo4j update command (main graph generation)
   ├── init.go          # Configuration initialization
   ├── start.go         # Neo4j container start
   ├── stop.go          # Neo4j container stop
@@ -284,5 +284,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/daniellvog/terraform-graphx/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/daniellvog/terraform-graphx/discussions)
+- **Issues**: [GitHub Issues](https://github.com/arrase/terraform-graphx/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/arrase/terraform-graphx/discussions)
