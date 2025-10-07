@@ -1,0 +1,232 @@
+package docker
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"terraform-graphx/internal/config"
+	"time"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+)
+
+const (
+	// ContainerName is the name of the Neo4j Docker container
+	ContainerName = "terraform-graphx-neo4j"
+)
+
+// StartContainerOptions contains options for starting the Neo4j container
+type StartContainerOptions struct {
+	Config *config.Config
+}
+
+// StartContainer starts a Neo4j Docker container with the provided configuration
+func StartContainer(ctx context.Context, opts StartContainerOptions) error {
+	cfg := opts.Config
+
+	// Validate config
+	if cfg.Neo4j.Password == "" {
+		return fmt.Errorf("neo4j password not set in configuration file")
+	}
+
+	// Get absolute path to neo4j-data directory
+	dataDir, err := filepath.Abs("neo4j-data")
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path for neo4j-data: %w", err)
+	}
+
+	// Check neo4j-data directory
+	hasExistingData := false
+
+	if _, err := os.Stat(dataDir); err == nil {
+		// Check if there's existing Neo4j data
+		dbmsDir := filepath.Join(dataDir, "dbms")
+		if stat, err := os.Stat(dbmsDir); err == nil {
+			// Check if dbms directory has content (a properly initialized database)
+			entries, err := os.ReadDir(dbmsDir)
+			if err == nil && len(entries) > 0 {
+				hasExistingData = true
+			} else if err == nil && len(entries) == 0 {
+				// Empty dbms directory means partial initialization - remove it
+				fmt.Println("⚠ Warning: Found empty dbms directory (partial initialization)")
+				fmt.Println("  Removing partial data to allow clean initialization...")
+				if err := os.Remove(dbmsDir); err != nil {
+					return fmt.Errorf("failed to remove empty dbms directory: %w", err)
+				}
+				fmt.Println("✓ Partial data removed")
+			} else if stat.IsDir() {
+				// Can't read directory, might be a permission issue but let's try anyway
+				hasExistingData = true
+			}
+		}
+	} else if os.IsNotExist(err) {
+		return fmt.Errorf("neo4j-data directory does not exist, please run 'terraform-graphx init' first")
+	}
+
+	// Warn if using existing data
+	if hasExistingData {
+		fmt.Println("⚠ Warning: Existing Neo4j data detected in neo4j-data directory")
+		fmt.Println("  Neo4j will use the password from the existing database, NOT from the config file.")
+		fmt.Println("  If you don't know the existing password, you can:")
+		fmt.Printf("    1. Remove neo4j-data/dbms and run 'terraform-graphx start' again\n")
+		fmt.Printf("    2. Or update the password in .terraform-graphx.yaml to match the existing database\n")
+		fmt.Println()
+	}
+
+	// Create Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	defer cli.Close()
+
+	// Check if container already exists
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	for _, c := range containers {
+		for _, name := range c.Names {
+			if name == "/"+ContainerName {
+				if c.State == "running" {
+					return fmt.Errorf("container %s is already running", ContainerName)
+				}
+				// Remove stopped container
+				fmt.Printf("Removing stopped container %s...\n", ContainerName)
+				if err := cli.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true}); err != nil {
+					return fmt.Errorf("failed to remove stopped container: %w", err)
+				}
+			}
+		}
+	}
+
+	// Pull image if not present
+	fmt.Printf("Checking for Docker image %s...\n", cfg.Neo4j.DockerImage)
+	_, _, err = cli.ImageInspectWithRaw(ctx, cfg.Neo4j.DockerImage)
+	if err != nil {
+		fmt.Printf("Pulling image %s...\n", cfg.Neo4j.DockerImage)
+		reader, err := cli.ImagePull(ctx, cfg.Neo4j.DockerImage, image.PullOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to pull image: %w", err)
+		}
+		defer reader.Close()
+		io.Copy(os.Stdout, reader)
+	} else {
+		fmt.Printf("✓ Image %s already present\n", cfg.Neo4j.DockerImage)
+	}
+
+	// Create container
+	fmt.Printf("Creating Neo4j container...\n")
+
+	containerConfig := &container.Config{
+		Image: cfg.Neo4j.DockerImage,
+		Env: []string{
+			fmt.Sprintf("NEO4J_AUTH=%s/%s", cfg.Neo4j.User, cfg.Neo4j.Password),
+			"NEO4J_ACCEPT_LICENSE_AGREEMENT=yes",
+		},
+		ExposedPorts: nat.PortSet{
+			"7474/tcp": struct{}{},
+			"7687/tcp": struct{}{},
+		},
+	}
+
+	hostConfig := &container.HostConfig{
+		PortBindings: nat.PortMap{
+			"7474/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "7474"}},
+			"7687/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "7687"}},
+		},
+		Binds: []string{
+			fmt.Sprintf("%s:/data", dataDir),
+		},
+	}
+
+	resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, ContainerName)
+	if err != nil {
+		return fmt.Errorf("failed to create container: %w", err)
+	}
+
+	// Start container
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		return fmt.Errorf("failed to start container: %w", err)
+	}
+
+	fmt.Printf("✓ Neo4j container started successfully\n")
+	fmt.Printf("  Container ID: %s\n", resp.ID[:12])
+	fmt.Printf("  Container Name: %s\n", ContainerName)
+	fmt.Printf("  Data Directory: %s\n", dataDir)
+	fmt.Printf("  Neo4j Browser: http://localhost:7474\n")
+	fmt.Printf("  Bolt URI: %s\n", cfg.Neo4j.URI)
+	fmt.Printf("\nWaiting for Neo4j to be ready (this may take a few seconds)...\n")
+
+	// Give Neo4j some time to start
+	time.Sleep(5 * time.Second)
+
+	fmt.Printf("✓ Neo4j should now be ready\n")
+	fmt.Printf("\nYou can verify the connection with:\n")
+	fmt.Printf("  terraform-graphx check database\n")
+
+	return nil
+}
+
+// StopContainer stops and removes the Neo4j Docker container
+func StopContainer(ctx context.Context) error {
+	// Create Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	defer cli.Close()
+
+	// Check if container exists
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	containerFound := false
+	var containerID string
+
+	for _, c := range containers {
+		for _, name := range c.Names {
+			if name == "/"+ContainerName {
+				containerFound = true
+				containerID = c.ID
+				break
+			}
+		}
+		if containerFound {
+			break
+		}
+	}
+
+	if !containerFound {
+		return fmt.Errorf("container %s not found", ContainerName)
+	}
+
+	// Stop container
+	fmt.Printf("Stopping container %s...\n", ContainerName)
+	timeout := 10 // seconds
+	if err := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
+		// Container might already be stopped, try to remove anyway
+		fmt.Printf("Warning: failed to stop container: %v\n", err)
+	} else {
+		fmt.Printf("✓ Container stopped\n")
+	}
+
+	// Remove container
+	fmt.Printf("Removing container %s...\n", ContainerName)
+	if err := cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true}); err != nil {
+		return fmt.Errorf("failed to remove container: %w", err)
+	}
+
+	fmt.Printf("✓ Container %s removed successfully\n", ContainerName)
+	fmt.Printf("\nNote: Data has been preserved in the neo4j-data directory\n")
+
+	return nil
+}

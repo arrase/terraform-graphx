@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -144,4 +145,61 @@ func Exists() bool {
 
 	err := v.ReadInConfig()
 	return err == nil
+}
+
+// GenerateRandomPassword generates a random alphanumeric password of the specified length.
+// It uses only alphanumeric characters to avoid issues with special characters in Neo4j auth strings.
+func GenerateRandomPassword(length int) (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	for i := range bytes {
+		bytes[i] = charset[int(bytes[i])%len(charset)]
+	}
+	return string(bytes), nil
+}
+
+// InitializeResult holds the result of the initialization process
+type InitializeResult struct {
+	ConfigPath string
+	DataDir    string
+	Config     *Config
+}
+
+// Initialize creates a new configuration file with a random password and the neo4j-data directory.
+// Returns an error if the configuration file already exists or if any step fails.
+func Initialize(configPath string) (*InitializeResult, error) {
+	// Check if config file already exists
+	if _, err := os.Stat(configPath); err == nil {
+		return nil, fmt.Errorf("configuration file already exists at %s", configPath)
+	}
+
+	// Create default config
+	cfg := DefaultConfig()
+
+	// Generate random password
+	password, err := GenerateRandomPassword(16)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate random password: %w", err)
+	}
+	cfg.Neo4j.Password = password
+
+	// Save to file
+	if err := Save(cfg, configPath); err != nil {
+		return nil, fmt.Errorf("failed to create config file: %w", err)
+	}
+
+	// Create neo4j-data directory
+	dataDir := "neo4j-data"
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create neo4j-data directory: %w", err)
+	}
+
+	return &InitializeResult{
+		ConfigPath: configPath,
+		DataDir:    dataDir,
+		Config:     cfg,
+	}, nil
 }
