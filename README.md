@@ -7,7 +7,6 @@ A CLI tool that generates dependency graphs from your Terraform infrastructure a
 ## Features
 
 - **🚀 Zero Configuration Start**: Built-in Docker support manages Neo4j automatically
-- **📊 Multiple Output Formats**: Export as JSON, Cypher statements, or push directly to Neo4j
 - **🔄 Idempotent Updates**: Run multiple times safely without duplicating data
 - **🎯 Plan Support**: Analyze graphs from saved Terraform plans
 - **🤖 AI-Ready**: Perfect foundation for AI agents via Model Context Protocol (MCP)
