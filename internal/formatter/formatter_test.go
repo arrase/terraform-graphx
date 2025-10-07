@@ -16,40 +16,6 @@ var testGraph = &graph.Graph{
 	},
 }
 
-func TestToJSON(t *testing.T) {
-	jsonString, err := ToJSON(testGraph)
-	if err != nil {
-		t.Fatalf("ToJSON failed: %v", err)
-	}
-
-	// Basic check to ensure the output looks like JSON and contains our node IDs
-	if !strings.Contains(jsonString, `"id": "aws_vpc.main"`) {
-		t.Errorf("JSON output does not contain expected node 'aws_vpc.main'")
-	}
-	if !strings.Contains(jsonString, `"from": "aws_subnet.public"`) {
-		t.Errorf("JSON output does not contain expected edge from 'aws_subnet.public'")
-	}
-}
-
-func TestToCypher(t *testing.T) {
-	cypherString, err := ToCypher(testGraph)
-	if err != nil {
-		t.Fatalf("ToCypher failed: %v", err)
-	}
-
-	// Check for node creation
-	expectedNode1 := "MERGE (n:Resource {id: 'aws_vpc.main'})"
-	if !strings.Contains(cypherString, expectedNode1) {
-		t.Errorf("Cypher output missing expected node statement: %s", expectedNode1)
-	}
-
-	// Check for edge creation
-	expectedEdge := "MATCH (from:Resource {id: 'aws_subnet.public'}), (to:Resource {id: 'aws_vpc.main'})\nMERGE (from)-[:DEPENDS_ON]->(to);"
-	if !strings.Contains(cypherString, expectedEdge) {
-		t.Errorf("Cypher output missing expected edge statement: %s", expectedEdge)
-	}
-}
-
 func TestToCypherTransaction(t *testing.T) {
 	query, params := ToCypherTransaction(testGraph)
 

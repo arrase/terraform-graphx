@@ -1,31 +1,100 @@
 # Copilot Instructions for terraform-graphx
 
-## Essentials
-- CLI entrypoint lives in `cmd/root.go`; the root command only displays help and available subcommands.
-- The `update` subcommand in `cmd/update.go` forces `cfg.Update = true`, loads config via `config.LoadAndMerge`, and executes the graph update flow.
-- Data flow: `runner.generateGraphData` shells out to `terraform graph` (optionally `-plan=<file>`), feeds DOT into `gographviz`, and `convertGraphToJSON` mimics `dot -Tjson` for the parser.
-- Parsed graphs use `internal/graph/graph.go`; nodes expose `id/type/provider/name` (attributes optional) and edges are always `DEPENDS_ON`.
-- `internal/parser.ParseGraph` strips DOT quoting with `cleanLabel`, so keep labels consistent with Terraform resource addresses.
+## Architecture Overview
+This CLI converts Terraform dependency graphs into Neo4j graph databases. The pipeline is:
+1. Shell out to `terraform graph` to get DOT format
+2. Parse DOT with `gographviz` → convert to JSON mimicking `dot -Tjson` output
+3. Parse JSON into `graph.Graph` structs (nodes + edges)
+4. Push to Neo4j via parameterized queries using `ToCypherTransaction`
 
-## Key packages & patterns
-- `internal/runner.handleOutput` either prints via `formatter` or calls `updateNeo4jDatabase`; the `update` subcommand demands populated `neo4j` config and passes through `validateNeo4jConfig`.
-- Formatter options: `ToJSON` for pretty JSON, `ToCypher` for file-friendly MERGEs, and `ToCypherTransaction` (UNWIND + params) for anything executed through the driver—never send raw `ToCypher` strings to Neo4j.
-- `internal/neo4j.Client.UpdateGraph` fetches current `Resource` ids, `DETACH DELETE`s anything missing, then executes the parameterized upsert. Always preserve the `Resource` label plus `id/type/name/provider` properties.
-- Configuration precedence is flags > `.terraform-graphx.yaml` > defaults; `config.Load` searches cwd then `$HOME`. Saving the config enforces 0600 permissions.
+**Critical**: Neo4j writes MUST use `ToCypherTransaction` (UNWIND + params)—prevents injection and improves performance.
 
-## CLI workflows
-- `terraform-graphx init` generates config + random password, creates `neo4j-data/`, and appends both paths to `.gitignore` when inside a git repo.
-- `terraform-graphx start` uses the Docker SDK (no shelling out) to pull `neo4j:community`, mount `neo4j-data` to `/data`, and warns if existing data will override the stored password.
-- `terraform-graphx stop` removes the managed container but keeps the volume; `check database` reuses `neo4j.NewClient` + `VerifyConnectivity` to confirm credentials.
-- Typical graph usage: run in a Terraform project (after `terraform init`); use `terraform-graphx update` to push the graph directly to Neo4j (supports `--plan` flag for plan files).
+## Data Flow & Key Components
 
-## Builds, tests, and fixtures
-- `make build` emits the `./terraform-graphx` binary; unit tests run with `make test-unit` (`go test -v -short ./...`).
-- `make test-e2e` first ensures the binary exists and copies `.terraform-graphx.yaml` into `examples/`. The suite in `e2e_test.go` requires Neo4j credentials plus Terraform CLI and will skip when the password is empty or connectivity fails.
-- Examples live in `examples/` and are used for JSON/Cypher fixture expectations as well as end-to-end runs.
+### CLI Entry Point (`cmd/`)
+- `cmd/root.go`: Displays help only; subcommands registered via `init()` in their files
+- `cmd/update.go`: Sets `cfg.Update = true`, then runs `runner.Run` → pushes to Neo4j
+- `cmd/init.go`: Generates `.terraform-graphx.yaml` + random 16-char password, creates `neo4j-data/`, updates `.gitignore`
+- `cmd/start.go`: Uses Docker Go SDK (not shell) to pull `neo4j:community`, mount `neo4j-data` → `/data`, warns about existing data/password conflicts
+- `cmd/stop.go`: Removes container but keeps volume
+- `cmd/check.go`: Validates Neo4j connectivity via `VerifyConnectivity`
 
-## Coding conventions & extension tips
-- Errors are wrapped with context (`fmt.Errorf("failed to …: %w", err)`) and surfaced by Cobra `RunE` handlers; logging uses `log.Println` for progress messages.
-- When extending graph output (new format), add a formatter function, wire it into `runner.formatAndPrintGraph`.
-- New CLI commands follow the existing pattern: create a file in `cmd/`, define a `cobra.Command`, register it in `init()`, and call `config.LoadAndMerge` if configuration is needed.
-- Keep Docker interactions in Go (see `cmd/start.go`/`stop.go`) and prefer the existing client abstractions for Neo4j updates instead of crafting ad-hoc Cypher strings.
+### Graph Pipeline (`internal/runner/runner.go`)
+```go
+generateGraphData(planFile) → terraform graph [-plan=file] 
+  → gographviz.Parse(DOT) 
+  → convertGraphToJSON() // mimics dot -Tjson
+  → parser.ParseGraph(JSON bytes)
+  → handleOutput() // updates Neo4j database
+```
+
+**Node ID extraction**: `parser.cleanLabel` strips `["..."]` quoting from DOT labels; expects Terraform resource addresses like `aws_instance.web`.
+
+### Graph Structure (`internal/graph/graph.go`)
+- Nodes: `id` (resource address), `type` (e.g., `aws_instance`), `provider`, `name`, optional `attributes`
+- Edges: Always `DEPENDS_ON` relation between `from` → `to`
+
+### Formatters (`internal/formatter/formatter.go`)
+- `ToCypherTransaction`: **Use for Neo4j driver execution** → UNWIND with `$nodes` and `$edges` params
+
+### Neo4j Client (`internal/neo4j/client.go`)
+`UpdateGraph` pattern (idempotent):
+1. `fetchExistingResourceIDs`: `MATCH (n:Resource) RETURN n.id`
+2. `deleteObsoleteResources`: `DETACH DELETE` anything not in new graph
+3. `upsertGraph`: Execute parameterized transaction from `ToCypherTransaction`
+
+**Schema**: All nodes have `Resource` label + `id/type/name/provider` properties (no indexes defined yet).
+
+## Configuration System (`internal/config/config.go`)
+Precedence: **CLI flags > `.terraform-graphx.yaml` > defaults**
+- `Load()`: Searches cwd → `$HOME` for `.terraform-graphx.yaml`
+- `LoadAndMerge(cmd, args)`: Overlays flags onto loaded config
+- `Save()`: Enforces 0600 permissions for security (password stored in plaintext)
+
+**Default values**: `bolt://localhost:7687`, user `neo4j`, no update mode
+
+## Developer Workflows
+
+### Build & Test
+```bash
+make build              # → ./terraform-graphx binary
+make test-unit          # go test -v -short ./... (no Neo4j needed)
+make test-e2e           # requires ./terraform-graphx binary + .terraform-graphx.yaml + Terraform CLI
+```
+
+**E2E test flow**:
+1. Checks for binary, copies config to `examples/`
+2. Runs `terraform init` in `examples/` if needed
+3. Tests Neo4j update with live connection (skips if password empty or connectivity fails)
+4. Verifies idempotency and graph structure
+
+### Adding a New CLI Command
+1. Create `cmd/newcmd.go` with `cobra.Command`
+2. Register in `init()`: `rootCmd.AddCommand(newCmd)`
+3. Use `config.LoadAndMerge` if config needed
+4. Return errors via `RunE` (Cobra handles exit codes)
+
+## Project-Specific Patterns
+
+### Docker Management (No Shell Commands)
+- Always use `github.com/docker/docker/client` SDK
+- Container name: `terraform-graphx-neo4j`
+- Volume mount: `$(pwd)/neo4j-data` → `/data` (container path)
+- `start.go` checks for existing data in `neo4j-data/dbms/` and warns about password mismatch
+
+### Error Handling
+- Wrap with context: `fmt.Errorf("failed to parse graph: %w", err)`
+- Cobra `RunE` surfaces errors automatically
+- Progress logging: `log.Println("Generating Terraform graph...")`
+
+### Testing Fixtures
+- `examples/` contains `main.tf` for end-to-end validation
+- E2E tests verify Neo4j state and graph structure
+- Unit tests use `-short` flag to skip integration tests
+
+## Common Gotchas
+- **Plan file support**: Pass `--plan=tfplan.binary` to analyze saved plans instead of current state
+- **Neo4j Community limitation**: One database per instance → use project-specific `neo4j-data/` volumes
+- **Password security**: `.terraform-graphx.yaml` auto-added to `.gitignore` during `init`, but manual setups may expose credentials
+- **Graph parsing**: Labels must match Terraform resource address format; `cleanLabel` regex expects `["resource.name"]` pattern
+- **Update-only mode**: The CLI only supports pushing to Neo4j via the `update` command. There is no standalone JSON/Cypher output mode.

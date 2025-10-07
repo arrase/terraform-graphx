@@ -17,7 +17,6 @@ const (
 // Config holds the configuration for terraform-graphx.
 type Config struct {
 	Neo4j    Neo4jConfig `mapstructure:"neo4j"`
-	Format   string      `mapstructure:"format"`
 	PlanFile string      `mapstructure:"planfile"`
 	Update   bool        `mapstructure:"update"`
 }
@@ -39,7 +38,6 @@ func DefaultConfig() *Config {
 			Password:    "",
 			DockerImage: "neo4j:community",
 		},
-		Format:   "json",
 		PlanFile: "",
 		Update:   false,
 	}
@@ -88,16 +86,8 @@ func LoadAndMerge(cmd *cobra.Command, args []string) (*Config, error) {
 	}
 
 	// Override with flags
-	if cmd.Flags().Changed("format") {
-		cfg.Format, _ = cmd.Flags().GetString("format")
-	}
-
 	if cmd.Flags().Changed("update") {
 		cfg.Update, _ = cmd.Flags().GetBool("update")
-	}
-
-	if cmd.Flags().Changed("neo4j-uri") {
-		cfg.Neo4j.URI, _ = cmd.Flags().GetString("neo4j-uri")
 	}
 
 	if cmd.Flags().Changed("neo4j-user") {

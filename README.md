@@ -275,28 +275,6 @@ terraform-graphx start
 make test-e2e
 ```
 
-### Adding New Output Formats
-
-1. Add formatter function in `internal/formatter/formatter.go`
-2. Wire into `runner.formatAndPrintGraph` in `internal/runner/runner.go`
-3. Add flag option in `cmd/graphx.go`
-
-Example:
-
-```go
-// internal/formatter/formatter.go
-func ToYAML(graph *graph.Graph) (string, error) {
-    // Implementation
-}
-
-// internal/runner/runner.go
-case "yaml":
-    output, err = formatter.ToYAML(graphData)
-
-// cmd/root.go
-cmd.Flags().String("format", "json", "Output format (json, cypher, yaml)")
-```
-
 ## License
 
 [Include your license information here]

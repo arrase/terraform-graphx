@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -86,95 +85,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		t.Log("✓ Terraform setup verified")
 	})
 
-	// Test 3: Generate JSON output
-	t.Run("3_GenerateJSONOutput", func(t *testing.T) {
-		examplesDir := filepath.Join(".", "examples")
-
-		cmd := exec.Command(getBinaryPath(), "--format=json")
-		cmd.Dir = examplesDir
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("graphx json failed: %v\nOutput: %s", err, output)
-		}
-
-		// Find the JSON part (starts with { and ends with })
-		outputStr := string(output)
-		jsonStart := strings.Index(outputStr, "{")
-		if jsonStart == -1 {
-			t.Fatalf("No JSON found in output: %s", outputStr)
-		}
-		jsonOutput := outputStr[jsonStart:]
-
-		// Parse JSON to verify it's valid
-		var result map[string]interface{}
-		if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
-			t.Fatalf("Failed to parse JSON output: %v\nJSON: %s", err, jsonOutput)
-		}
-
-		// Verify structure
-		nodes, ok := result["nodes"].([]interface{})
-		if !ok {
-			t.Fatal("Expected 'nodes' array in JSON output")
-		}
-
-		edges, ok := result["edges"].([]interface{})
-		if !ok {
-			t.Fatal("Expected 'edges' array in JSON output")
-		}
-
-		t.Logf("✓ Generated valid JSON: %d nodes, %d edges", len(nodes), len(edges))
-
-		// Verify we have the expected resources
-		nodeCount := len(nodes)
-		if nodeCount < 2 {
-			t.Errorf("Expected at least 2 nodes, got %d", nodeCount)
-		}
-
-		// Check for specific resources
-		expectedResources := []string{"null_resource.cluster", "null_resource.app"}
-		for _, res := range expectedResources {
-			if !strings.Contains(jsonOutput, res) {
-				t.Errorf("Expected to find %s in output", res)
-			}
-		}
-
-		t.Log("✓ All expected resources found in JSON output")
-	})
-
-	// Test 4: Generate Cypher output
-	t.Run("4_GenerateCypherOutput", func(t *testing.T) {
-		examplesDir := filepath.Join(".", "examples")
-
-		cmd := exec.Command(getBinaryPath(), "--format=cypher")
-		cmd.Dir = examplesDir
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("cypher output failed: %v\nOutput: %s", err, output)
-		}
-
-		outputStr := string(output)
-
-		// Verify Cypher syntax
-		requiredPatterns := []string{
-			"MERGE (n:Resource",
-			"null_resource.cluster",
-			"null_resource.app",
-			"DEPENDS_ON",
-		}
-
-		for _, pattern := range requiredPatterns {
-			if !strings.Contains(outputStr, pattern) {
-				t.Errorf("Expected to find '%s' in Cypher output", pattern)
-			}
-		}
-
-		t.Logf("✓ Generated valid Cypher output (%d bytes)", len(outputStr))
-	})
-
-	// Test 5: Insert data into Neo4j
-	t.Run("5_InsertIntoNeo4j", func(t *testing.T) {
+	// Test 3: Insert data into Neo4j
+	t.Run("3_InsertIntoNeo4j", func(t *testing.T) {
 		examplesDir := filepath.Join(".", "examples")
 
 		cmd := exec.Command(getBinaryPath(), "update")
@@ -194,8 +106,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		t.Logf("Output: %s", outputStr)
 	})
 
-	// Test 6: Verify nodes in database
-	t.Run("6_VerifyNodesInDatabase", func(t *testing.T) {
+	// Test 4: Verify nodes in database
+	t.Run("4_VerifyNodesInDatabase", func(t *testing.T) {
 		count := countNodesInNeo4j(t, ctx, client)
 
 		if count < 2 {
@@ -205,8 +117,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		t.Logf("✓ Found %d nodes in Neo4j", count)
 	})
 
-	// Test 7: Verify specific resources
-	t.Run("7_VerifySpecificResources", func(t *testing.T) {
+	// Test 5: Verify specific resources
+	t.Run("5_VerifySpecificResources", func(t *testing.T) {
 		expectedResources := map[string]map[string]string{
 			"null_resource.cluster": {
 				"type": "null_resource",
@@ -237,8 +149,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		}
 	})
 
-	// Test 8: Verify relationships
-	t.Run("8_VerifyRelationships", func(t *testing.T) {
+	// Test 6: Verify relationships
+	t.Run("6_VerifyRelationships", func(t *testing.T) {
 		count := countRelationshipsInNeo4j(t, ctx, client)
 
 		if count < 1 {
@@ -256,8 +168,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		}
 	})
 
-	// Test 9: Test idempotency (update again)
-	t.Run("9_TestIdempotency", func(t *testing.T) {
+	// Test 7: Test idempotency (update again)
+	t.Run("7_TestIdempotency", func(t *testing.T) {
 		examplesDir := filepath.Join(".", "examples")
 
 		// Get count before second update
@@ -283,8 +195,8 @@ func TestE2E_FullWorkflow(t *testing.T) {
 		t.Logf("✓ Idempotency verified: %d nodes before and after second update", countAfter)
 	})
 
-	// Test 10: Query the graph
-	t.Run("10_QueryGraph", func(t *testing.T) {
+	// Test 8: Query the graph
+	t.Run("8_QueryGraph", func(t *testing.T) {
 		// Test a more complex query
 		session := client.Driver.NewSession(ctx, neo4jdriver.SessionConfig{AccessMode: neo4jdriver.AccessModeRead})
 		defer session.Close(ctx)

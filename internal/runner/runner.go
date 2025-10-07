@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"terraform-graphx/internal/config"
-	"terraform-graphx/internal/formatter"
 	"terraform-graphx/internal/graph"
 	"terraform-graphx/internal/neo4j"
 	graphparser "terraform-graphx/internal/parser"
@@ -145,12 +143,12 @@ func convertGraphToJSON(g *gographviz.Graph) ([]byte, error) {
 	return json.Marshal(result)
 }
 
-// handleOutput decides whether to update Neo4j or format and print the graph.
+// handleOutput updates the Neo4j database with the graph data.
 func handleOutput(g *graph.Graph, cfg *config.Config) error {
-	if cfg.Update {
-		return updateNeo4jDatabase(g, &cfg.Neo4j)
+	if !cfg.Update {
+		return fmt.Errorf("no operation specified. Use the 'update' command to push data to Neo4j")
 	}
-	return formatAndPrintGraph(g, cfg.Format)
+	return updateNeo4jDatabase(g, &cfg.Neo4j)
 }
 
 func updateNeo4jDatabase(g *graph.Graph, neo4jCfg *config.Neo4jConfig) error {
@@ -177,29 +175,6 @@ func updateNeo4jDatabase(g *graph.Graph, neo4jCfg *config.Neo4jConfig) error {
 	}
 
 	log.Println("Successfully updated Neo4j database.")
-	return nil
-}
-
-func formatAndPrintGraph(g *graph.Graph, format string) error {
-	log.Printf("Formatting graph as %s...", format)
-
-	var output string
-	var err error
-
-	switch format {
-	case "json":
-		output, err = formatter.ToJSON(g)
-	case "cypher":
-		output, err = formatter.ToCypher(g)
-	default:
-		return fmt.Errorf("invalid output format: %s (valid formats: json, cypher)", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to format graph: %w", err)
-	}
-
-	fmt.Fprintln(os.Stdout, output)
 	return nil
 }
 
