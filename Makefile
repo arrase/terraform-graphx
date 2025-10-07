@@ -19,7 +19,7 @@ help:
 # Build the binary
 build:
 	@echo "Building terraform-graphx..."
-	go build -o terraform-graphx .
+	go build -ldflags="-s -w" -o terraform-graphx .
 	@echo "✓ Build complete: ./terraform-graphx"
 
 # Run unit tests only
