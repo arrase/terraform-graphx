@@ -13,13 +13,8 @@ var rootCmd = &cobra.Command{
 Terraform infrastructure and can export them to JSON, Cypher, or Neo4j.`,
 }
 
-// Execute runs the root command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
-}
-
-func init() {
-	// Subcommands are registered in their respective files
 }

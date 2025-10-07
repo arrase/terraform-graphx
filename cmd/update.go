@@ -30,10 +30,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 func init() {
 	rootCmd.AddCommand(updateCmd)
 
-	// Plan file flag
 	updateCmd.Flags().String("plan", "", "Path to a terraform plan file (optional)")
-
-	// Neo4j connection flags
 	updateCmd.Flags().String("neo4j-uri", "bolt://localhost:7687", "URI for the Neo4j database")
 	updateCmd.Flags().String("neo4j-user", "neo4j", "Username for the Neo4j database")
 	updateCmd.Flags().String("neo4j-pass", "", "Password for the Neo4j database")

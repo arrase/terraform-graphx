@@ -1,35 +1,20 @@
 package parser
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"terraform-graphx/internal/graph"
+
+	"github.com/awalterschulze/gographviz"
 )
 
-// DotGraph represents the top-level structure of the JSON output from dot.
-type DotGraph struct {
-	Objects []DotObject `json:"objects"`
-	Edges   []DotEdge   `json:"edges"`
-}
-
-// DotObject represents a node or a subgraph in the dot output.
-type DotObject struct {
-	Name  string `json:"name"`
-	Label string `json:"label"`
-	// We only care about nodes, which have a _gvid
-	GVID *int `json:"_gvid"`
-}
-
-// DotEdge represents an edge in the dot output.
-type DotEdge struct {
-	Tail int `json:"tail"`
-	Head int `json:"head"`
-}
-
-// cleanLabel removes extra quoting and formatting from the dot label.
+// cleanLabel removes extra quoting and formatting from node labels.
 func cleanLabel(label string) string {
+	// Remove surrounding quotes if present
+	label = strings.Trim(label, `"`)
+
+	// Handle Terraform-style labels like ["resource.name"]
 	re := regexp.MustCompile(`\["(.*?)"\]`)
 	matches := re.FindStringSubmatch(label)
 	if len(matches) > 1 {
@@ -38,11 +23,11 @@ func cleanLabel(label string) string {
 	return label
 }
 
-// ParseGraph parses the JSON output from `dot -Tjson`.
-func ParseGraph(data []byte) (*graph.Graph, error) {
-	var dotGraph DotGraph
-	if err := json.Unmarshal(data, &dotGraph); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal dot json: %w", err)
+// ParseGraph converts a gographviz.Graph directly to our internal graph structure.
+// This eliminates the need for an intermediate JSON conversion step.
+func ParseGraph(dotGraph *gographviz.Graph) (*graph.Graph, error) {
+	if dotGraph == nil {
+		return nil, fmt.Errorf("dotGraph cannot be nil")
 	}
 
 	g := &graph.Graph{
@@ -50,42 +35,48 @@ func ParseGraph(data []byte) (*graph.Graph, error) {
 		Edges: make([]graph.Edge, 0),
 	}
 
-	nodeMap := make(map[int]string)
+	nodeMap := make(map[string]string) // maps original node name -> cleaned address
 
-	// Extract nodes
-	for _, obj := range dotGraph.Objects {
-		// We identify nodes by checking for the _gvid attribute, which is absent in subgraphs.
-		if obj.GVID != nil {
-			// Clean up the label to get the resource address
-			address := cleanLabel(obj.Name)
-			nodeMap[*obj.GVID] = address
-
-			// Basic type/name extraction
-			parts := strings.Split(address, ".")
-			var nodeType, nodeName string
-			if len(parts) >= 2 {
-				nodeType = parts[len(parts)-2]
-				nodeName = parts[len(parts)-1]
+	// Extract nodes from gographviz
+	for nodeName, node := range dotGraph.Nodes.Lookup {
+		// Get the label if it exists, otherwise use the node name
+		label := nodeName
+		if node.Attrs != nil {
+			if labelAttr, ok := node.Attrs["label"]; ok {
+				label = labelAttr
 			}
-
-			g.Nodes = append(g.Nodes, graph.Node{
-				ID:       address,
-				Type:     nodeType,
-				Name:     nodeName,
-				Provider: "", // This information is not in the graph output
-			})
 		}
+
+		// Clean up the label to get the resource address
+		address := cleanLabel(label)
+		nodeMap[nodeName] = address
+
+		// Extract type and name from the address
+		// Example: "aws_instance.web" -> type="aws_instance", name="web"
+		parts := strings.Split(address, ".")
+		var nodeType, nodeName string
+		if len(parts) >= 2 {
+			nodeType = parts[len(parts)-2]
+			nodeName = parts[len(parts)-1]
+		}
+
+		g.Nodes = append(g.Nodes, graph.Node{
+			ID:       address,
+			Type:     nodeType,
+			Name:     nodeName,
+			Provider: "", // Provider info is not available in the graph output
+		})
 	}
 
-	// Extract edges
-	for _, edge := range dotGraph.Edges {
-		from, okFrom := nodeMap[edge.Tail]
-		to, okTo := nodeMap[edge.Head]
+	// Extract edges from gographviz
+	for _, edge := range dotGraph.Edges.Edges {
+		fromAddr, okFrom := nodeMap[edge.Src]
+		toAddr, okTo := nodeMap[edge.Dst]
 
 		if okFrom && okTo {
 			g.Edges = append(g.Edges, graph.Edge{
-				From:     from,
-				To:       to,
+				From:     fromAddr,
+				To:       toAddr,
 				Relation: "DEPENDS_ON",
 			})
 		}
