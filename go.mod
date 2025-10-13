@@ -6,7 +6,7 @@ require (
 	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/docker/docker v28.5.0+incompatible
 	github.com/docker/go-connections v0.6.0
-	github.com/neo4j/neo4j-go-driver/v5 v5.28.3
+	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 )
