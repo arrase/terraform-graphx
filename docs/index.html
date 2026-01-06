@@ -30,7 +30,7 @@
                Empower AI agents to understand your infrastructure context.</p>
             <a href="#usage" class="cta-button">Get Started</a>
             <div>
-                <img src="img/screenshot.png" alt="GraphX Screenshot - Visualizing Terraform dependencies in Neo4j" class="hero-image">
+                <img id="heroImage" src="img/screenshot.png" alt="GraphX Screenshot - Visualizing Terraform dependencies in Neo4j" class="hero-image">
             </div>
         </div>
     </section>
@@ -180,5 +180,60 @@
             </p>
         </div>
     </footer>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="expandedImage">
+    </div>
+
+    <script>
+        // Get the modal
+        var modal = document.getElementById("imageModal");
+
+        // Get the image and insert it inside the modal - use its "alt" text as a caption
+        var img = document.getElementById("heroImage");
+        var modalImg = document.getElementById("expandedImage");
+        
+        img.onclick = function(){
+            modal.style.display = "flex";
+            // slight delay to allow display flex to apply before opacity transition
+            setTimeout(() => {
+                modal.classList.add("show");
+            }, 10);
+            modalImg.src = this.src;
+        }
+
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close-modal")[0];
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+            modal.classList.remove("show");
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+        }
+
+        // Close on click outside
+        modal.onclick = function(event) {
+            if (event.target === modal) {
+                modal.classList.remove("show");
+                setTimeout(() => {
+                    modal.style.display = "none";
+                }, 300);
+            }
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape" && modal.style.display === "flex") {
+                modal.classList.remove("show");
+                setTimeout(() => {
+                    modal.style.display = "none";
+                }, 300);
+            }
+        });
+    </script>
 </body>
 </html>
