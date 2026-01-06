@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terraform GraphX - Visualize Infrastructure</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#" class="logo">Terraform <span>GraphX</span></a>
+                <ul class="nav-links">
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#how-it-works">How it Works</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#usage">Usage</a></li>
+                    <li><a href="https://github.com/arrase/terraform-graphx" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Turn Terraform into Knowledge</h1>
+            <p>Convert your Terraform dependency graphs into a queryable Neo4j database. 
+               Empower AI agents to understand your infrastructure context.</p>
+            <a href="#usage" class="cta-button">Get Started</a>
+            <div>
+                <img src="img/screenshot.png" alt="GraphX Screenshot - Visualizing Terraform dependencies in Neo4j" class="hero-image">
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="container">
+        <h2>What is Terraform GraphX?</h2>
+        <p style="text-align: center; max-width: 800px; margin: 0 auto; font-size: 1.1rem;">
+            Terraform GraphX is a powerful CLI tool designed to bridge the gap between static Infrastructure as Code (IaC) definitions and dynamic infrastructure analysis. 
+            By converting `terraform graph` output into a Neo4j graph database, it unlocks capabilities for structural analysis, impact assessment, and AI-driven infrastructure management.
+        </p>
+    </section>
+
+    <section id="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <i class="fas fa-file-code feature-icon" style="color: #fab1a0;"></i>
+                    <h3>Terraform</h3>
+                    <p>Parses your `*.tf` or plan files</p>
+                </div>
+                <div class="flow-arrow">➜</div>
+                <div class="flow-step">
+                    <i class="fas fa-project-diagram feature-icon" style="color: var(--primary-color);"></i>
+                    <h3>GraphX</h3>
+                    <p>Processes DOT graph to Graph Data</p>
+                </div>
+                <div class="flow-arrow">➜</div>
+                <div class="flow-step">
+                    <i class="fas fa-database feature-icon" style="color: var(--accent-color);"></i>
+                    <h3>Neo4j</h3>
+                    <p>Stores nodes & relationships</p>
+                </div>
+                <div class="flow-arrow">➜</div>
+                <div class="flow-step">
+                    <i class="fas fa-robot feature-icon" style="color: #55efc4;"></i>
+                    <h3>MCP / AI</h3>
+                    <p>Context for AI Agents</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 40px; background: var(--code-bg); padding: 30px; border-radius: 8px;">
+                <h3>Why this matters?</h3>
+                <p>Traditional `terraform graph` outputs generic DOT files that are hard to query. 
+                   GraphX transforms this directly into a labeled property graph where you can ask complex questions like:</p>
+                <br>
+                <code style="display: block; width: fit-content; margin: 0 auto; color: #a29bfe;">MATCH (dependent)-[*]->(target {id: 'aws_vpc.main'}) RETURN dependent</code>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="container">
+        <h2>Key Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">🚀</span>
+                <h3>Zero Configuration</h3>
+                <p>Built-in Docker integration means you don't need to manually set up a database. GraphX handles the Neo4j container lifecycle for you.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔄</span>
+                <h3>Idempotent Updates</h3>
+                <p>Run updates as many times as you want. The graph is intelligently updated via Cypher transactions, preventing duplicate nodes or edges.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🤖</span>
+                <h3>AI Ready (MCP)</h3>
+                <p>Designed to feed context to AI agents via the Model Context Protocol. Give your LLMs "sight" over your infrastructure dependencies.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔒</span>
+                <h3>Secure by Default</h3>
+                <p>Auto-generates strong passwords and manages local permissioning. Database volumes are kept local to your project.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3>Plan Analysis</h3>
+                <p>Don't just graph what you <em>have</em>—graph what you <em>will have</em>. Pass Terraform plan binary files to preview changes.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">💎</span>
+                <h3>Go Powered</h3>
+                <p>Written in Go for cross-platform portability and high performance on heavy infrastructure graphs.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="mcp" class="container">
+        <h2>Connect with MCP</h2>
+        <div style="background: var(--code-bg); padding: 40px; border-radius: 8px; border-left: 5px solid var(--accent-color);">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 30px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3 style="color: var(--accent-color); margin-bottom: 15px;">Use the Official Neo4j MCP Server</h3>
+                    <p>To let your AI assistants (like Claude, Cursor, or Ollama) query your infrastructure graph, we recommend using the <strong style="color: white;">Official Neo4j MCP Server</strong>.</p>
+                    <p style="margin-top: 15px;">It provides a standardized way for LLMs to execute Cypher queries against your GraphX database, enabling them to answer questions like <em>"What depends on this VPC?"</em> or <em>"Are there circular dependencies?"</em>.</p>
+                </div>
+                <div style="text-align: center; flex: 0 0 auto;">
+                    <a href="https://neo4j.com/docs/mcp/current/" target="_blank" class="cta-button" style="background-color: transparent; border: 2px solid var(--accent-color); color: var(--accent-color);">
+                        <i class="fas fa-book"></i> Read Neo4j MCP Docs
+                    </a>
+                </div>
+            </div>
+            <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; color: #b2bec3;">
+                <i class="fas fa-info-circle"></i> Configure the MCP server to connect to your GraphX instance at <code>bolt://localhost:7687</code> using the credentials generated by <code>terraform-graphx init</code>.
+            </p>
+        </div>
+    </section>
+
+    <section id="usage">
+        <div class="container">
+            <h2>Installation & Usage</h2>
+            
+            <h3>1. Initial Setup</h3>
+            <p>Initialize the project config. This creates a `.terraform-graphx.yaml` and a secure password.</p>
+            <pre><code>terraform-graphx init</code></pre>
+
+            <h3>2. Start Database</h3>
+            <p>Spin up the local Neo4j container. Data is persisted in `./neo4j-data`.</p>
+            <pre><code>terraform-graphx start</code></pre>
+
+            <h3>3. Update Graph</h3>
+            <p>This runs `terraform graph`, parses it, and pushes it to Neo4j.</p>
+            <pre><code>terraform-graphx update</code></pre>
+            
+            <p><em>Or analyze a specific plan:</em></p>
+            <pre><code>terraform-graphx update --plan=tfplan.binary</code></pre>
+
+            <h3>4. Verify & Explore</h3>
+            <p>Check connectivity and open your browser to localhost:7474 to see your graph.</p>
+            <pre><code>terraform-graphx check</code></pre>
+
+            <div class="command-list">
+                <div class="command-item">
+                    <h4>Stop Container</h4>
+                    <p>Free up resources when you are done.</p>
+                    <pre style="margin-bottom: 0;"><code>terraform-graphx stop</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Terraform GraphX Project. Open Source Software.</p>
+            <p style="font-size: 0.9rem; margin-top: 10px; color: #636e72;">
+                Terraform is a trademark of HashiCorp. Neo4j is a trademark of Neo4j, Inc.
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
